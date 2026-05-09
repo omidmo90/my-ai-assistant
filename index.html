@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Syca v2.1</title>
+    <style>
+        :root {
+            --primary: #8b5cf6; --secondary: #ec4899; --bg: #050505;
+            --glass: rgba(255, 255, 255, 0.08); --glass-border: rgba(255, 255, 255, 0.1);
+            --text: #f4f4f5; --text-dim: #a1a1aa;
+        }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: radial-gradient(circle at top right, #1e1b4b, #050505);
+            background-attachment: fixed; color: var(--text); margin: 0; padding: 20px;
+        }
+        .container { width: 100%; max-width: 450px; margin: 0 auto; }
+        .card {
+            background: var(--glass); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
+            border: 1px solid var(--glass-border); border-radius: 28px; padding: 22px;
+            margin-bottom: 20px;
+        }
+        h2 { font-size: 1.1rem; margin-bottom: 15px; color: var(--primary); display: flex; align-items: center; gap: 8px; }
+        input, textarea, select {
+            width: 100%; background: rgba(0,0,0,0.4); border: 1px solid var(--glass-border);
+            border-radius: 15px; padding: 14px; color: white; margin-bottom: 12px; box-sizing: border-box;
+        }
+        .btn-main {
+            width: 100%; padding: 16px; border-radius: 16px; border: none;
+            background: linear-gradient(135deg, var(--primary), #3b82f6);
+            color: white; font-weight: bold; cursor: pointer;
+        }
+        /* دکمه چرخ‌دنده جدید */
+        #settings-toggle {
+            position: fixed; top: 20px; right: 20px; font-size: 1.5rem; cursor: pointer; z-index: 100; opacity: 0.7;
+        }
+        .settings-panel { display: none; margin-bottom: 20px; border: 1px solid var(--primary); }
+        .show { display: block !important; }
+        .task-card { background: rgba(255,255,255,0.03); padding: 12px; border-radius: 15px; margin-bottom: 10px; border: 1px solid var(--glass-border); }
+        #ai-response { line-height: 1.7; padding: 12px; border-radius: 12px; background: rgba(0,0,0,0.2); margin-top: 10px; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+<div id="settings-toggle" onclick="toggleSettings()">⚙️</div>
+
+<div class="container">
+    <div style="text-align: center; margin-bottom: 20px;">
+        <h1 style="margin:0; letter-spacing: 3px;">SYCA</h1>
+    </div>
+
+    <div id="settings-card" class="card settings-panel">
+        <h2>⚙️ تنظیمات سیستم</h2>
+        <label style="font-size: 0.8rem;">Gemini API Key:</label>
+        <input type="password" id="api-key-input" placeholder="AIza...">
+        <div style="display: flex; gap: 10px;">
+            <input type="time" id="start-time" value="08:00">
+            <input type="time" id="end-time" value="22:00">
+        </div>
+        <button onclick="saveSettings()" class="btn-main">ذخیره تنظیمات</button>
+        <button onclick="clearAll()" style="background:none; color: #ef4444; border:none; margin-top:10px; cursor:pointer; width:100%">🗑️ پاکسازی کامل کل داده‌ها</button>
+    </div>
+
+    <div id="main-content">
+        <div class="card">
+            <h2>🎯 اهداف</h2>
+            <input type="text" id="lt-name" placeholder="نام هدف...">
+            <div style="display: flex; gap: 10px;">
+                <input type="number" id="lt-prob" placeholder="شانس %">
+                <input type="number" id="lt-gain" placeholder="سود ۱-۱۰">
+            </div>
+            <button onclick="addLT()" style="background:var(--glass); color:white; border:none; width:100%; padding:10px; border-radius:10px;">+ افزودن</button>
+            <div id="lt-list" style="margin-top: 15px;"></div>
+        </div>
+
+        <div class="card">
+            <h2>🧠 وضعیت فعلی</h2>
+            <textarea id="user-input" rows="3" placeholder="کجایی؟ چه کاری داری؟"></textarea>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn-main" onclick="askSyca()">تحلیل سایکا</button>
+                <button onclick="startVoice()" style="background:var(--glass); border:none; padding:15px; border-radius:18px;">🎤</button>
+            </div>
+            <div id="ai-response">منتظر ورودی...</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let db = JSON.parse(localStorage.getItem('syca_db')) || { tasks: [], settings: { key: "", start: "08:00", end: "22:00" } };
+
+    window.onload = () => {
+        // اگر کلید وجود ندارد، پنل تنظیمات را باز کن
+        if (!db.settings.key) {
+            document.getElementById('settings-card').classList.add('show');
+        }
+        render();
+    };
+
+    function toggleSettings() {
+        document.getElementById('settings-card').classList.toggle('show');
+    }
+
+    function saveSettings() {
+        const newKey = document.getElementById('api-key-input').value;
+        if (newKey) db.settings.key = newKey;
+        db.settings.start = document.getElementById('start-time').value;
+        db.settings.end = document.getElementById('end-time').value;
+        localStorage.setItem('syca_db', JSON.stringify(db));
+        alert("تنظیمات با موفقیت ذخیره شد.");
+        toggleSettings();
+    }
+
+    function addLT() {
+        const n = document.getElementById('lt-name').value;
+        const p = document.getElementById('lt-prob').value;
+        const g = document.getElementById('lt-gain').value;
+        if(!n) return;
+        db.tasks.push({n, p, g, id: Date.now()});
+        localStorage.setItem('syca_db', JSON.stringify(db));
+        render();
+        document.getElementById('lt-name').value = '';
+    }
+
+    function render() {
+        document.getElementById('lt-list').innerHTML = db.tasks.map(t => `
+            <div class="task-card">
+                <div style="display:flex; justify-content:space-between;"><span>${t.n}</span><b>${t.p}%</b></div>
+            </div>
+        `).join('');
+    }
+
+    async function askSyca() {
+        const input = document.getElementById('user-input').value;
+        const respDiv = document.getElementById('ai-response');
+        if(!db.settings.key) return alert("ابتدا API Key را در تنظیمات وارد کنید.");
+        
+        respDiv.innerText = "در حال تحلیل...";
+        try {
+            const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${db.settings.key}`, {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ contents: [{ parts: [{ text: `Context: ${input}. Goals: ${JSON.stringify(db.tasks)}. Suggest 2 short actions in Persian.` }] }] })
+            });
+            const d = await r.json();
+            respDiv.innerText = d.candidates[0].content.parts[0].text;
+        } catch(e) { respDiv.innerText = "خطا در اتصال!"; }
+    }
+
+    function startVoice() {
+        const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+        recognition.lang = 'fa-IR';
+        recognition.onresult = (e) => {
+            document.getElementById('user-input').value = e.results[0][0].transcript;
+            askSyca();
+        };
+        recognition.start();
+    }
+
+    function clearAll() {
+        if(confirm("کل داده‌ها پاک شود؟")) {
+            localStorage.clear();
+            location.reload();
+        }
+    }
+</script>
+</body>
+</html>
