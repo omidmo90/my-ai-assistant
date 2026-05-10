@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Syca v15 | Voice-Enabled Coach</title>
+    <title>Syca v17 | Independent Scroll</title>
     <style>
         :root {
             --primary: #8b5cf6; --bg: #0a0a0c; --card: #16161e; --text: #f4f4f5;
@@ -36,25 +36,56 @@
             padding: 15px; margin-bottom: 15px;
             border: 1px solid var(--border);
         }
+
+        /* ✨ کارت چت: ارتفاع ثابت + ساختار flex داخلی */
+        .chat-card {
+            display: flex;
+            flex-direction: column;
+            height: 380px;          /* ارتفاع ثابت کل کارت */
+            overflow: hidden;        /* جلوگیری از فرار محتوا */
+        }
+        .chat-card label {
+            flex-shrink: 0;          /* لیبل ثابت می‌مونه */
+        }
+        .chat-card .input-row {
+            flex-shrink: 0;          /* ردیف ورودی ثابت می‌مونه */
+        }
+
         label {
             display: block; font-size: 0.75rem;
             color: var(--primary); margin-bottom: 8px; font-weight: bold;
         }
-        input, textarea, select {
+        input, select {
             width: 100%; background: #000; border: 1px solid var(--border);
             padding: 12px; border-radius: 12px; color: white;
             margin-bottom: 10px; font-family: inherit; font-size: 0.9rem;
         }
-        textarea { resize: vertical; min-height: 44px; }
+        textarea {
+            width: 100%; background: #000; border: 1px solid var(--border);
+            padding: 12px; border-radius: 12px; color: white;
+            margin-bottom: 10px; font-family: inherit; font-size: 0.9rem;
+            resize: none;
+            min-height: 44px;
+            max-height: 100px;
+            overflow-y: auto;
+        }
+        .scrollable-input {
+            min-height: 44px;
+            max-height: 100px;
+            overflow-y: auto;
+            resize: none;
+        }
         .btn {
             border: none; padding: 10px 14px; border-radius: 12px;
             color: white; cursor: pointer; font-weight: bold; font-size: 0.85rem;
+            white-space: nowrap;
         }
         .btn-primary { background: var(--primary); }
         .btn-blue { background: var(--blue); }
         .btn-icon {
             background: var(--border); border: none; padding: 12px;
             border-radius: 12px; color: white; font-size: 1.2rem; cursor: pointer;
+            flex-shrink: 0;
         }
         .btn-icon.recording {
             background: var(--red); box-shadow: 0 0 15px var(--red);
@@ -64,14 +95,49 @@
             0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); }
         }
         .input-row { display: flex; gap: 8px; align-items: flex-start; }
-        .input-row input, .input-row textarea { margin-bottom: 0; }
+        .input-row input, .input-row textarea { margin-bottom: 0; flex: 1; }
+
+        /* ✨ کانتینر چت: فضای باقیمانده رو پر می‌کنه و اسکرول داخلی داره */
         .chat-container {
-            margin-top: 12px; display: flex; flex-direction: column; gap: 8px;
+            flex: 1;                 /* فضای باقیمانده رو پر کن */
+            min-height: 0;           /* مهم برای flex! بدون این کار اسکرول نمی‌کنه */
+            overflow-y: auto;        /* اسکرول فقط داخل خودش */
+            margin-top: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 5px;
+            scroll-behavior: smooth;
+            /* جلوگیری از پراپاگیت اسکرول به والد */
+            overscroll-behavior: contain;
+            -webkit-overflow-scrolling: touch;  /* اسکرول روان روی iOS */
         }
+        .chat-container:empty::before {
+            content: "هنوز پیامی نیست...";
+            color: var(--muted);
+            font-size: 0.8rem;
+            text-align: center;
+            margin: auto;
+        }
+        .chat-container::-webkit-scrollbar,
+        textarea::-webkit-scrollbar {
+            width: 6px;
+        }
+        .chat-container::-webkit-scrollbar-thumb,
+        textarea::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+        .chat-container::-webkit-scrollbar-thumb:hover,
+        textarea::-webkit-scrollbar-thumb:hover {
+            background: var(--muted);
+        }
+
         .msg {
             max-width: 90%; padding: 10px 12px; border-radius: 15px;
             font-size: 0.85rem; line-height: 1.6;
             white-space: pre-wrap; word-wrap: break-word;
+            flex-shrink: 0;
         }
         .user {
             align-self: flex-start; background: var(--border);
@@ -130,9 +196,16 @@
         .stat-num { color: var(--text); font-weight: bold; font-size: 1rem; }
         .voice-status {
             font-size: 0.7rem; color: var(--muted);
-            margin-top: 5px; padding: 4px 8px;
-            background: #000; border-radius: 8px; display: inline-block;
+            margin-top: 5px; padding: 8px; line-height: 1.6;
+            background: #000; border-radius: 8px;
         }
+        .help-box {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid var(--blue);
+            border-radius: 12px; padding: 12px; margin-top: 10px;
+            font-size: 0.75rem; line-height: 1.7; color: #d4d4d8;
+        }
+        .help-box b { color: var(--blue); }
     </style>
 </head>
 <body>
@@ -158,10 +231,10 @@
         </div>
 
         <!-- بخش ۳: گزارش سریع -->
-        <div class="card" style="border-color: var(--blue);">
+        <div class="card chat-card" style="border-color: var(--blue);">
             <label style="color:var(--blue)">🚀 گزارش سریع</label>
             <div class="input-row">
-                <input type="text" id="status-input" placeholder="الان کجا و مشغول چه کاری؟">
+                <textarea id="status-input" rows="1" class="scrollable-input" placeholder="الان کجا و مشغول چه کاری؟"></textarea>
                 <button id="mic-quick" class="btn-icon" onclick="toggleMic('status-input', 'quick')">🎤</button>
                 <button class="btn btn-blue" onclick="handleAI('quick')">ثبت</button>
             </div>
@@ -169,7 +242,7 @@
         </div>
 
         <!-- بخش ۴: میز مشورت -->
-        <div class="card">
+        <div class="card chat-card">
             <label>🧠 میز مشورت</label>
             <div class="input-row">
                 <textarea id="chat-input" rows="2" placeholder="یه گفتگوی عمیق‌تر..."></textarea>
@@ -210,9 +283,26 @@
                 <option value="en">فقط انگلیسی</option>
                 <option value="off">خاموش</option>
             </select>
-            <div id="voice-availability" class="voice-status"></div>
+            <div id="voice-availability" class="voice-status">در حال بررسی صداهای موجود...</div>
 
-            <label style="margin-top:15px;">⏰ بازه بررسی (ساعت)</label>
+            <div id="voice-help" class="help-box" style="display:none;">
+                <b>⚠️ صدای مناسب پیدا نشد</b><br>
+                دستگاه شما TTS نصب نکرده. برای فعال‌سازی:<br><br>
+                <b>اندروید:</b> Settings → Accessibility → Text-to-speech output → نصب صدای فارسی یا Google TTS<br><br>
+                <b>iOS:</b> Settings → Accessibility → Spoken Content → Voices → دانلود صدای فارسی<br><br>
+                <b>ویندوز:</b> Settings → Time & Language → Speech → Add a voice<br><br>
+                <b>مک:</b> System Settings → Accessibility → Spoken Content → System Voice → Manage Voices
+            </div>
+
+            <label style="margin-top:15px;">📏 ارتفاع کادرهای چت (پیکسل)</label>
+            <select id="chat-height">
+                <option value="280">کوتاه (280)</option>
+                <option value="380" selected>متوسط (380)</option>
+                <option value="500">بلند (500)</option>
+                <option value="650">خیلی بلند (650)</option>
+            </select>
+
+            <label>⏰ بازه بررسی (ساعت)</label>
             <select id="interval-check">
                 <option value="1">هر ۱ ساعت</option>
                 <option value="2" selected>هر ۲ ساعت</option>
@@ -239,7 +329,7 @@
         <div class="card">
             <label>📚 درباره</label>
             <div style="font-size: 0.8rem; color: var(--muted); line-height: 1.7;">
-                Syca v15 — مربی هوشمند شخصی شما<br>
+                Syca v17 — مربی هوشمند شخصی شما<br>
                 مبتنی بر Gemini API<br>
                 داده‌ها در مرورگر شما (localStorage) ذخیره می‌شوند.
             </div>
@@ -261,7 +351,7 @@ let db = JSON.parse(localStorage.getItem('syca_db')) || {
     chatHistory: { quick: [], deep: [] },
     settings: { 
         key: "", checkInt: "2", feedInt: "4", nightTime: "23:30",
-        voiceMode: "auto"
+        voiceMode: "auto", chatHeight: "380"
     },
     lastSummary: "",
     lastMood: ""
@@ -270,51 +360,79 @@ let db = JSON.parse(localStorage.getItem('syca_db')) || {
 let recognition = null;
 let currentRecordingType = null;
 
+// ============ اعمال ارتفاع چت بر اساس تنظیمات ============
+function applyChatHeight() {
+    const h = db.settings.chatHeight || "380";
+    document.querySelectorAll('.chat-card').forEach(c => {
+        c.style.height = h + 'px';
+    });
+}
+
 // ============ مدیریت صداهای TTS ============
 let availableVoices = [];
 let persianVoice = null;
 let englishVoice = null;
 
 function loadVoices() {
+    if (!('speechSynthesis' in window)) {
+        updateVoiceStatus();
+        return;
+    }
+
     availableVoices = window.speechSynthesis.getVoices();
 
-    // پیدا کردن صدای فارسی (fa-IR، fa، Persian، Farsi)
     persianVoice = availableVoices.find(v =>
         v.lang === 'fa-IR' ||
         v.lang === 'fa' ||
         v.lang.startsWith('fa-') ||
-        /persian|farsi/i.test(v.name)
+        v.lang === 'fa_IR' ||
+        /persian|farsi|iran/i.test(v.name)
     );
 
-    // پیدا کردن بهترین صدای انگلیسی (ترجیح: en-US یا en-GB)
     englishVoice = availableVoices.find(v => v.lang === 'en-US') ||
                    availableVoices.find(v => v.lang === 'en-GB') ||
                    availableVoices.find(v => v.lang.startsWith('en-')) ||
-                   availableVoices.find(v => v.lang === 'en');
+                   availableVoices.find(v => v.lang === 'en') ||
+                   availableVoices.find(v => /english/i.test(v.name));
 
-    console.log('Persian voice:', persianVoice?.name || 'NOT FOUND');
-    console.log('English voice:', englishVoice?.name || 'NOT FOUND');
-    console.log('Total voices:', availableVoices.length);
-
-    // بروزرسانی نمایش وضعیت در تنظیمات
+    console.log('Voices:', availableVoices.length, 'FA:', persianVoice?.name, 'EN:', englishVoice?.name);
     updateVoiceStatus();
 }
 
 function updateVoiceStatus() {
     const el = document.getElementById('voice-availability');
+    const helpEl = document.getElementById('voice-help');
     if (!el) return;
-    const fa = persianVoice ? `✅ فارسی (${persianVoice.name})` : '❌ فارسی موجود نیست';
-    const en = englishVoice ? `✅ انگلیسی (${englishVoice.name})` : '❌ انگلیسی موجود نیست';
-    el.innerHTML = `${fa}<br>${en}`;
+
+    if (!('speechSynthesis' in window)) {
+        el.innerHTML = `❌ مرورگر شما از TTS پشتیبانی نمی‌کند.`;
+        if (helpEl) helpEl.style.display = 'block';
+        return;
+    }
+
+    if (availableVoices.length === 0) {
+        el.innerHTML = `⏳ در حال بارگذاری...`;
+        return;
+    }
+
+    const fa = persianVoice ? `✅ فارسی: ${persianVoice.name}` : '❌ فارسی موجود نیست';
+    const en = englishVoice ? `✅ انگلیسی: ${englishVoice.name}` : '❌ انگلیسی موجود نیست';
+    el.innerHTML = `${fa}<br>${en}<br><span style="color:var(--muted)">کل: ${availableVoices.length}</span>`;
+
+    if (helpEl) {
+        helpEl.style.display = (!persianVoice && !englishVoice) ? 'block' : 'none';
+    }
 }
 
-// صداها در بعضی مرورگرها async لود میشن
 if ('speechSynthesis' in window) {
     loadVoices();
     window.speechSynthesis.onvoiceschanged = loadVoices;
+    setTimeout(loadVoices, 100);
+    setTimeout(loadVoices, 500);
+    setTimeout(loadVoices, 1500);
 }
 
-// ============ ابزارهای کمکی ============
+// ============ ابزار ============
 function escapeHtml(s) {
     return String(s)
         .replace(/&/g, '&amp;')
@@ -331,7 +449,7 @@ function generateId() {
     return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
 }
 
-// ============ ناوبری صفحات ============
+// ============ ناوبری ============
 function showPage(p) {
     document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
     document.querySelectorAll('nav div').forEach(el => el.classList.remove('active'));
@@ -339,7 +457,7 @@ function showPage(p) {
     document.getElementById('nav-' + p).classList.add('active');
     if (p === 'settings') {
         loadSettings();
-        updateVoiceStatus();
+        loadVoices();
     }
     render();
 }
@@ -351,6 +469,7 @@ function loadSettings() {
     document.getElementById('interval-feedback').value = db.settings.feedInt || "4";
     document.getElementById('nightly-review-time').value = db.settings.nightTime || "23:30";
     document.getElementById('voice-mode').value = db.settings.voiceMode || "auto";
+    document.getElementById('chat-height').value = db.settings.chatHeight || "380";
 }
 
 function saveSettings() {
@@ -359,14 +478,20 @@ function saveSettings() {
     db.settings.feedInt = document.getElementById('interval-feedback').value;
     db.settings.nightTime = document.getElementById('nightly-review-time').value;
     db.settings.voiceMode = document.getElementById('voice-mode').value;
+    db.settings.chatHeight = document.getElementById('chat-height').value;
     saveDB();
+    applyChatHeight();
     alert("✅ تنظیمات ذخیره شد.");
 }
 
 function testVoice() {
     const mode = document.getElementById('voice-mode').value;
     if (mode === 'off') return alert("صدا خاموش است.");
-    speak("سلام، این یک تست صدا است.", "Hello, this is a voice test.");
+    if (availableVoices.length === 0) loadVoices();
+    if (!persianVoice && !englishVoice) {
+        return alert("⚠️ هیچ صدای مناسبی نصب نیست. راهنمای زیر فیلد را ببینید.");
+    }
+    speak("سلام، این یک تست صدا است.", "Hello, this is a voice test from Syca.");
 }
 
 // ============ میکروفون ============
@@ -379,7 +504,7 @@ function toggleMic(inputId, type) {
     }
 
     const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRec) return alert("⚠️ مرورگر شما از تشخیص گفتار پشتیبانی نمی‌کند.");
+    if (!SpeechRec) return alert("⚠️ مرورگر از تشخیص گفتار پشتیبانی نمی‌کند.");
 
     recognition = new SpeechRec();
     recognition.lang = 'fa-IR';
@@ -416,7 +541,7 @@ function toggleMic(inputId, type) {
     recognition.start();
 }
 
-// ============ موتور هوشمند Gemini ============
+// ============ Gemini ============
 async function handleAI(type) {
     const inputId = type === 'quick' ? 'status-input' : 'chat-input';
     const userText = document.getElementById(inputId).value.trim();
@@ -432,7 +557,6 @@ async function handleAI(type) {
 
     addMessage(type, 'user', `(${timestamp}) ${userText}`);
     document.getElementById(inputId).value = "";
-
     addMessage(type, 'ai', '⏳ در حال تحلیل...');
 
     const models = [
@@ -458,23 +582,19 @@ ${currentTasks}
 
 وظایف تو:
 1. یک پاسخ دوستانه و مفید فارسی بده (2-4 جمله، کامل و واضح)
-2. همون پاسخ رو به انگلیسی هم ترجمه کن (طبیعی و روان، نه ترجمه‌ی تحت‌اللفظی) - برای پخش صوتی روی دستگاه‌هایی که فارسی پشتیبانی نمی‌کنن
+2. همون پاسخ رو به انگلیسی هم ترجمه کن (طبیعی و روان)
 3. اگر کاربر کاری رو ذکر کرد که باید انجام بده، اون رو به عنوان task استخراج کن
 4. وضعیت کلی روحی/شرایطی کاربر رو در یک کلمه ارزیابی کن
 
-❗ حتماً پاسخ رو فقط و فقط در قالب JSON معتبر زیر برگردون، بدون هیچ متن اضافه یا markdown:
+❗ حتماً پاسخ رو فقط و فقط در قالب JSON معتبر زیر برگردون:
 
 {
-  "reply": "پاسخ گرم و کامل به کاربر در 2-4 جمله فارسی",
-  "replyEnglish": "Same response translated naturally to English for TTS playback",
-  "summary": "خلاصه وضعیت کاربر در یک جمله کوتاه",
-  "mood": "یک کلمه: مثل آرام، پرانرژی، خسته، متمرکز، پراسترس",
-  "newTasks": [
-    { "title": "عنوان کار", "priority": "high|medium|low" }
-  ]
-}
-
-اگر کار جدیدی نیست، newTasks رو خالی [] بذار.`;
+  "reply": "پاسخ فارسی",
+  "replyEnglish": "English translation",
+  "summary": "خلاصه وضعیت",
+  "mood": "یک کلمه",
+  "newTasks": [{ "title": "...", "priority": "high|medium|low" }]
+}`;
 
     let lastError = "";
     let success = false;
@@ -505,7 +625,6 @@ ${currentTasks}
 
             if (!response.ok) {
                 lastError = data?.error?.message || `HTTP ${response.status}`;
-                console.error(`Model ${m} failed:`, data);
                 continue;
             }
 
@@ -517,25 +636,21 @@ ${currentTasks}
 
             let parsed;
             try {
-                const cleaned = rawText.replace(/```json|```/g, '').trim();
-                parsed = JSON.parse(cleaned);
+                parsed = JSON.parse(rawText.replace(/```json|```/g, '').trim());
             } catch (parseErr) {
-                console.error("Parse error:", parseErr, "Raw:", rawText);
                 parsed = { reply: rawText, replyEnglish: "", summary: "", mood: "", newTasks: [] };
             }
 
             db.chatHistory[type].pop();
 
             const reply = parsed.reply || "پاسخ دریافت شد.";
-            const replyEnglish = parsed.replyEnglish || "";
-
             addMessage(type, 'ai', reply);
-            speak(reply, replyEnglish);
+            speak(reply, parsed.replyEnglish || "");
 
             if (parsed.summary) db.lastSummary = parsed.summary;
             if (parsed.mood) db.lastMood = parsed.mood;
 
-            if (Array.isArray(parsed.newTasks) && parsed.newTasks.length > 0) {
+            if (Array.isArray(parsed.newTasks)) {
                 parsed.newTasks.forEach(t => {
                     if (t && t.title) {
                         db.tasks.push({
@@ -556,70 +671,47 @@ ${currentTasks}
 
         } catch (e) {
             lastError = e.message;
-            console.error(`Network error with ${m}:`, e);
         }
     }
 
     if (!success) {
         db.chatHistory[type].pop();
-        addMessage(type, 'ai', `⚠️ خطا در اتصال:\n${lastError}`);
+        addMessage(type, 'ai', `⚠️ خطا: ${lastError}`);
     }
 }
 
-// ============ مدیریت پیام‌ها ============
 function addMessage(type, role, text) {
     db.chatHistory[type].push({ role, text });
-    if (db.chatHistory[type].length > 6) db.chatHistory[type].shift();
+    if (db.chatHistory[type].length > 50) db.chatHistory[type].shift();
     saveDB();
     render();
 }
 
-// ============ سیستم هوشمند پخش صدا ============
 function speak(persianText, englishText) {
     try {
-        if (!('speechSynthesis' in window)) {
-            console.log("TTS not supported");
-            return;
-        }
-
+        if (!('speechSynthesis' in window)) return;
         const mode = db.settings.voiceMode || "auto";
         if (mode === "off") return;
 
-        // اگه هنوز صداها لود نشدن، یه بار دیگه بخون
         if (availableVoices.length === 0) loadVoices();
+        if (availableVoices.length === 0) return;
 
         window.speechSynthesis.cancel();
 
-        let textToSpeak = "";
-        let voiceToUse = null;
-        let langToUse = "";
+        let textToSpeak = "", voiceToUse = null, langToUse = "";
 
         if (mode === "fa") {
-            // فقط فارسی
-            textToSpeak = persianText;
-            voiceToUse = persianVoice;
-            langToUse = "fa-IR";
+            if (!persianVoice) return;
+            textToSpeak = persianText; voiceToUse = persianVoice; langToUse = "fa-IR";
         } else if (mode === "en") {
-            // فقط انگلیسی
-            textToSpeak = englishText || persianText;
-            voiceToUse = englishVoice;
-            langToUse = "en-US";
+            if (!englishVoice) return;
+            textToSpeak = englishText || persianText; voiceToUse = englishVoice; langToUse = "en-US";
         } else {
-            // auto: اگه فارسی موجوده ازش استفاده کن، وگرنه انگلیسی
             if (persianVoice) {
-                textToSpeak = persianText;
-                voiceToUse = persianVoice;
-                langToUse = "fa-IR";
+                textToSpeak = persianText; voiceToUse = persianVoice; langToUse = "fa-IR";
             } else if (englishVoice && englishText) {
-                textToSpeak = englishText;
-                voiceToUse = englishVoice;
-                langToUse = "en-US";
-                console.log("Persian voice not found, falling back to English");
-            } else {
-                // هیچ صدای مناسبی نیست
-                console.log("No suitable voice available");
-                return;
-            }
+                textToSpeak = englishText; voiceToUse = englishVoice; langToUse = "en-US";
+            } else return;
         }
 
         if (!textToSpeak) return;
@@ -630,22 +722,16 @@ function speak(persianText, englishText) {
         utterance.rate = 1.0;
         utterance.pitch = 1.0;
         utterance.volume = 1.0;
+        utterance.onerror = (e) => console.error("TTS error:", e);
 
-        utterance.onerror = (e) => {
-            console.error("TTS error:", e);
-        };
-
-        // کمی تأخیر برای جلوگیری از باگ Chrome
-        setTimeout(() => {
-            window.speechSynthesis.speak(utterance);
-        }, 100);
+        setTimeout(() => window.speechSynthesis.speak(utterance), 100);
 
     } catch (e) {
         console.error("Speak error:", e);
     }
 }
 
-// ============ مدیریت Task ها ============
+// ============ Tasks ============
 function toggleTask(id) {
     const task = db.tasks.find(t => t.id === id);
     if (task) {
@@ -679,8 +765,7 @@ function addManualTask() {
     if (!title) return;
     db.tasks.push({
         id: generateId(),
-        n: title,
-        p: priority,
+        n: title, p: priority,
         done: false,
         createdAt: new Date().toISOString()
     });
@@ -712,26 +797,24 @@ function render() {
             log.innerHTML = db.chatHistory[type]
                 .map(m => `<div class="msg ${m.role === 'user' ? 'user' : 'ai'}">${escapeHtml(m.text)}</div>`)
                 .join('');
-            log.scrollTop = log.scrollHeight;
+            // اسکرول خودکار به آخرین پیام
+            requestAnimationFrame(() => {
+                log.scrollTop = log.scrollHeight;
+            });
         }
     });
 
     const summaryEl = document.getElementById('strategic-summary');
-    if (summaryEl) {
-        summaryEl.innerText = db.lastSummary || "منتظر گزارش شما هستم...";
-    }
+    if (summaryEl) summaryEl.innerText = db.lastSummary || "منتظر گزارش شما هستم...";
     const moodEl = document.getElementById('mood-indicator');
-    if (moodEl) {
-        moodEl.innerText = db.lastMood ? `🎭 حال و احوال: ${db.lastMood}` : "";
-    }
+    if (moodEl) moodEl.innerText = db.lastMood ? `🎭 حال و احوال: ${db.lastMood}` : "";
 
     const homeTasks = document.getElementById('home-task-list');
     if (homeTasks) {
         const activeTasks = db.tasks.filter(t => !t.done);
         const completedToday = db.tasks.filter(t => {
             if (!t.done || !t.completedAt) return false;
-            const today = new Date().toDateString();
-            return new Date(t.completedAt).toDateString() === today;
+            return new Date(t.completedAt).toDateString() === new Date().toDateString();
         });
         const visibleTasks = [...activeTasks, ...completedToday];
 
@@ -750,9 +833,8 @@ function render() {
         if (statsEl) {
             const total = db.tasks.length;
             const done = db.tasks.filter(t => t.done).length;
-            const active = total - done;
             statsEl.innerHTML = `
-                <div><span class="stat-num">${active}</span><br>فعال</div>
+                <div><span class="stat-num">${total - done}</span><br>فعال</div>
                 <div><span class="stat-num" style="color:var(--green)">${done}</span><br>انجام‌شده</div>
                 <div><span class="stat-num">${total}</span><br>کل</div>
             `;
@@ -773,20 +855,19 @@ function render() {
     }
 }
 
-// ============ پاکسازی ============
 function clearAll() {
-    if (confirm("⚠️ تمام داده‌ها (تنظیمات، گفتگوها، کارها) پاک شوند؟")) {
+    if (confirm("⚠️ تمام داده‌ها پاک شوند؟")) {
         localStorage.clear();
         location.reload();
     }
 }
 
-// ============ شروع ============
 window.onload = () => {
+    applyChatHeight();
     render();
     if (db.settings.key) loadSettings();
-    // یه تأخیر کوتاه برای لود کردن صداها
     setTimeout(loadVoices, 500);
+    setTimeout(loadVoices, 1500);
 };
 </script>
 </body>
