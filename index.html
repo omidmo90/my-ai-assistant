@@ -3,11 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Syca v17 | Independent Scroll</title>
+    <title>Syca v19 | ADHD-Friendly Coach</title>
     <style>
         :root {
             --primary: #8b5cf6; --bg: #0a0a0c; --card: #16161e; --text: #f4f4f5;
             --blue: #3b82f6; --red: #ef4444; --green: #10b981; --amber: #f59e0b;
+            --pink: #ec4899; --cyan: #06b6d4; --orange: #f97316;
             --muted: #71717a; --border: #27272a;
         }
         * { box-sizing: border-box; }
@@ -24,7 +25,7 @@
             position: fixed; bottom: 0; width: 100%; z-index: 1000;
         }
         nav div {
-            color: var(--muted); font-size: 0.75rem; text-align: center;
+            color: var(--muted); font-size: 0.7rem; text-align: center;
             flex: 1; cursor: pointer; transition: color 0.2s;
         }
         nav div.active { color: var(--primary); font-weight: bold; }
@@ -36,21 +37,11 @@
             padding: 15px; margin-bottom: 15px;
             border: 1px solid var(--border);
         }
-
-        /* ✨ کارت چت: ارتفاع ثابت + ساختار flex داخلی */
         .chat-card {
-            display: flex;
-            flex-direction: column;
-            height: 380px;          /* ارتفاع ثابت کل کارت */
-            overflow: hidden;        /* جلوگیری از فرار محتوا */
+            display: flex; flex-direction: column;
+            height: 380px; overflow: hidden;
         }
-        .chat-card label {
-            flex-shrink: 0;          /* لیبل ثابت می‌مونه */
-        }
-        .chat-card .input-row {
-            flex-shrink: 0;          /* ردیف ورودی ثابت می‌مونه */
-        }
-
+        .chat-card label, .chat-card .input-row { flex-shrink: 0; }
         label {
             display: block; font-size: 0.75rem;
             color: var(--primary); margin-bottom: 8px; font-weight: bold;
@@ -64,17 +55,9 @@
             width: 100%; background: #000; border: 1px solid var(--border);
             padding: 12px; border-radius: 12px; color: white;
             margin-bottom: 10px; font-family: inherit; font-size: 0.9rem;
-            resize: none;
-            min-height: 44px;
-            max-height: 100px;
-            overflow-y: auto;
+            resize: none; min-height: 44px; max-height: 100px; overflow-y: auto;
         }
-        .scrollable-input {
-            min-height: 44px;
-            max-height: 100px;
-            overflow-y: auto;
-            resize: none;
-        }
+        .scrollable-input { min-height: 44px; max-height: 100px; overflow-y: auto; resize: none; }
         .btn {
             border: none; padding: 10px 14px; border-radius: 12px;
             color: white; cursor: pointer; font-weight: bold; font-size: 0.85rem;
@@ -82,6 +65,9 @@
         }
         .btn-primary { background: var(--primary); }
         .btn-blue { background: var(--blue); }
+        .btn-green { background: var(--green); }
+        .btn-amber { background: var(--amber); }
+        .btn-orange { background: var(--orange); }
         .btn-icon {
             background: var(--border); border: none; padding: 12px;
             border-radius: 12px; color: white; font-size: 1.2rem; cursor: pointer;
@@ -97,98 +83,81 @@
         .input-row { display: flex; gap: 8px; align-items: flex-start; }
         .input-row input, .input-row textarea { margin-bottom: 0; flex: 1; }
 
-        /* ✨ کانتینر چت: فضای باقیمانده رو پر می‌کنه و اسکرول داخلی داره */
         .chat-container {
-            flex: 1;                 /* فضای باقیمانده رو پر کن */
-            min-height: 0;           /* مهم برای flex! بدون این کار اسکرول نمی‌کنه */
-            overflow-y: auto;        /* اسکرول فقط داخل خودش */
-            margin-top: 12px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            padding: 5px;
-            scroll-behavior: smooth;
-            /* جلوگیری از پراپاگیت اسکرول به والد */
+            flex: 1; min-height: 0;
+            overflow-y: auto; margin-top: 12px;
+            display: flex; flex-direction: column; gap: 8px;
+            padding: 5px; scroll-behavior: smooth;
             overscroll-behavior: contain;
-            -webkit-overflow-scrolling: touch;  /* اسکرول روان روی iOS */
+            -webkit-overflow-scrolling: touch;
         }
         .chat-container:empty::before {
-            content: "هنوز پیامی نیست...";
-            color: var(--muted);
-            font-size: 0.8rem;
-            text-align: center;
-            margin: auto;
+            content: "هنوز پیامی نیست..."; color: var(--muted);
+            font-size: 0.8rem; text-align: center; margin: auto;
         }
-        .chat-container::-webkit-scrollbar,
-        textarea::-webkit-scrollbar {
-            width: 6px;
+        .chat-container::-webkit-scrollbar, textarea::-webkit-scrollbar { width: 6px; }
+        .chat-container::-webkit-scrollbar-thumb, textarea::-webkit-scrollbar-thumb {
+            background: var(--border); border-radius: 3px;
         }
-        .chat-container::-webkit-scrollbar-thumb,
-        textarea::-webkit-scrollbar-thumb {
-            background: var(--border);
-            border-radius: 3px;
-        }
-        .chat-container::-webkit-scrollbar-thumb:hover,
-        textarea::-webkit-scrollbar-thumb:hover {
-            background: var(--muted);
-        }
-
         .msg {
             max-width: 90%; padding: 10px 12px; border-radius: 15px;
             font-size: 0.85rem; line-height: 1.6;
-            white-space: pre-wrap; word-wrap: break-word;
-            flex-shrink: 0;
+            white-space: pre-wrap; word-wrap: break-word; flex-shrink: 0;
         }
-        .user {
-            align-self: flex-start; background: var(--border);
-            border-right: 4px solid var(--blue);
-        }
-        .ai {
-            align-self: flex-end; background: rgba(139, 92, 246, 0.1);
-            border-left: 4px solid var(--primary); text-align: right;
-        }
+        .user { align-self: flex-start; background: var(--border); border-right: 4px solid var(--blue); }
+        .ai { align-self: flex-end; background: rgba(139, 92, 246, 0.1); border-left: 4px solid var(--primary); text-align: right; }
+
         .status-badge {
             display: inline-block; padding: 4px 12px; border-radius: 20px;
             font-size: 0.7rem; background: var(--green); color: white; margin-bottom: 10px;
         }
         .task-item {
-            display: flex; align-items: center; gap: 10px;
+            display: flex; align-items: center; gap: 8px;
             background: #000; padding: 10px 12px; border-radius: 12px;
             margin-bottom: 6px; border: 1px solid var(--border);
+            flex-wrap: wrap;
         }
         .task-item.done { opacity: 0.5; }
         .task-item.done .task-text { text-decoration: line-through; }
+        .task-item.blocked { border-color: var(--red); background: rgba(239,68,68,0.05); }
         .task-checkbox {
             width: 22px; height: 22px; border-radius: 50%;
             border: 2px solid var(--muted); cursor: pointer;
             display: flex; align-items: center; justify-content: center;
             flex-shrink: 0; transition: all 0.2s;
         }
-        .task-checkbox.checked {
-            background: var(--green); border-color: var(--green); color: white;
+        .task-checkbox.checked { background: var(--green); border-color: var(--green); color: white; }
+        .task-text { flex: 1; font-size: 0.85rem; min-width: 100px; }
+        .task-tag {
+            font-size: 0.65rem; padding: 2px 8px; border-radius: 10px;
+            white-space: nowrap;
         }
-        .task-text { flex: 1; font-size: 0.85rem; }
-        .task-priority { font-size: 0.7rem; padding: 2px 8px; border-radius: 10px; }
         .priority-high { background: rgba(239, 68, 68, 0.2); color: var(--red); }
         .priority-medium { background: rgba(245, 158, 11, 0.2); color: var(--amber); }
         .priority-low { background: rgba(16, 185, 129, 0.2); color: var(--green); }
-        .task-delete {
-            background: none; border: none; color: var(--muted);
-            cursor: pointer; font-size: 1rem; padding: 4px;
+        .ctx-outdoor { background: rgba(6, 182, 212, 0.2); color: var(--cyan); }
+        .ctx-home { background: rgba(139, 92, 246, 0.2); color: var(--primary); }
+        .ctx-online { background: rgba(59, 130, 246, 0.2); color: var(--blue); }
+        .ctx-phone { background: rgba(236, 72, 153, 0.2); color: var(--pink); }
+        .energy-high { background: rgba(239, 68, 68, 0.15); color: var(--red); }
+        .energy-medium { background: rgba(245, 158, 11, 0.15); color: var(--amber); }
+        .energy-low { background: rgba(16, 185, 129, 0.15); color: var(--green); }
+        .time-tag { background: rgba(113, 113, 122, 0.2); color: var(--muted); }
+        .parallel-tag { background: rgba(249, 115, 22, 0.15); color: var(--orange); }
+        .type-goal { background: rgba(245, 158, 11, 0.15); color: var(--amber); }
+        .deadline-tag { background: rgba(239, 68, 68, 0.15); color: var(--red); }
+        .blocked-tag { background: rgba(113, 113, 122, 0.2); color: var(--muted); font-style: italic; }
+        .task-delete { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 1rem; padding: 4px; }
+        .task-feedback-btn {
+            background: rgba(249, 115, 22, 0.1); border: 1px solid var(--orange);
+            color: var(--orange); border-radius: 8px; padding: 4px 8px;
+            font-size: 0.7rem; cursor: pointer; margin-right: 4px;
         }
-        .empty-state {
-            font-size: 0.8rem; color: var(--muted);
-            text-align: center; padding: 15px 0;
-        }
+
+        .empty-state { font-size: 0.8rem; color: var(--muted); text-align: center; padding: 15px 0; }
         .summary-text { font-size: 0.85rem; color: #d4d4d8; line-height: 1.6; }
-        .mood-indicator {
-            font-size: 0.75rem; color: var(--muted); margin-top: 8px;
-        }
-        .clear-tasks-btn {
-            background: none; border: 1px dashed var(--border); color: var(--muted);
-            width: 100%; padding: 8px; border-radius: 10px; margin-top: 8px;
-            cursor: pointer; font-size: 0.75rem;
-        }
+        .mood-indicator { font-size: 0.75rem; color: var(--muted); margin-top: 8px; }
+
         .stats-row {
             display: flex; justify-content: space-around;
             font-size: 0.75rem; color: var(--muted); margin-top: 10px;
@@ -200,12 +169,74 @@
             background: #000; border-radius: 8px;
         }
         .help-box {
-            background: rgba(59, 130, 246, 0.1);
-            border: 1px solid var(--blue);
+            background: rgba(59, 130, 246, 0.1); border: 1px solid var(--blue);
             border-radius: 12px; padding: 12px; margin-top: 10px;
             font-size: 0.75rem; line-height: 1.7; color: #d4d4d8;
         }
-        .help-box b { color: var(--blue); }
+        .tabs {
+            display: flex; gap: 5px; margin-bottom: 15px;
+            background: var(--card); padding: 4px; border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+        .tab {
+            flex: 1; text-align: center; padding: 8px; border-radius: 8px;
+            cursor: pointer; font-size: 0.8rem; color: var(--muted); transition: 0.2s;
+        }
+        .tab.active { background: var(--primary); color: white; font-weight: bold; }
+        .progress-bar {
+            height: 6px; background: var(--border); border-radius: 3px;
+            margin-top: 8px; overflow: hidden;
+        }
+        .progress-fill { height: 100%; background: var(--green); transition: width 0.3s; }
+        .quick-add-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+        .quick-add-row select { flex: 1; min-width: 100px; margin-bottom: 0; padding: 8px; font-size: 0.8rem; }
+        .modal-overlay {
+            display: none; position: fixed; top:0; left:0; right:0; bottom:0;
+            background: rgba(0,0,0,0.7); z-index: 2000;
+            justify-content: center; align-items: center; padding: 20px;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal {
+            background: var(--card); border-radius: 20px; padding: 20px;
+            max-width: 450px; width: 100%; max-height: 85vh; overflow-y: auto;
+            border: 1px solid var(--border);
+        }
+        .review-question { margin-bottom: 15px; }
+        .review-question p { font-size: 0.85rem; margin: 0 0 8px 0; color: var(--text); }
+        .ctx-options { display: flex; flex-wrap: wrap; gap: 6px; }
+        .ctx-chip {
+            padding: 6px 12px; border-radius: 20px; cursor: pointer;
+            border: 1px solid var(--border); background: #000;
+            font-size: 0.8rem; user-select: none;
+        }
+        .ctx-chip.selected { background: var(--primary); border-color: var(--primary); }
+        .nightly-banner {
+            background: linear-gradient(135deg, var(--primary), var(--blue));
+            border-radius: 16px; padding: 12px 16px; margin-bottom: 15px;
+            font-size: 0.85rem; cursor: pointer; display: flex;
+            justify-content: space-between; align-items: center;
+        }
+
+        /* ✨ کارت Idle Time (ADHD-friendly) */
+        .idle-card {
+            background: linear-gradient(135deg, rgba(249,115,22,0.15), rgba(236,72,153,0.1));
+            border: 1px solid var(--orange);
+        }
+        .idle-bundle {
+            background: rgba(249,115,22,0.08);
+            border: 1px solid var(--orange);
+            border-radius: 12px; padding: 12px; margin-top: 10px;
+        }
+        .idle-bundle-title {
+            font-size: 0.85rem; color: var(--orange);
+            font-weight: bold; margin-bottom: 8px;
+        }
+        .idle-task-row {
+            display: flex; align-items: center; gap: 8px;
+            padding: 6px 0; border-bottom: 1px dashed var(--border);
+        }
+        .idle-task-row:last-child { border-bottom: none; }
+        .idle-task-row .task-text { font-size: 0.8rem; }
     </style>
 </head>
 <body>
@@ -215,6 +246,11 @@
     <div id="page-home" class="page active">
         <h1>SYCA CENTER</h1>
 
+        <div id="nightly-banner" class="nightly-banner" style="display:none;" onclick="openNightlyReview()">
+            <span>🌙 وقت مرور شبانه است.</span>
+            <span>›</span>
+        </div>
+
         <!-- بخش ۱: تحلیل وضعیت -->
         <div class="card" style="border-color: var(--green);">
             <div class="status-badge">📊 تحلیل وضعیت لحظه‌ای</div>
@@ -222,17 +258,58 @@
             <div id="mood-indicator" class="mood-indicator"></div>
         </div>
 
-        <!-- بخش ۲: کارهای پیشنهادی -->
-        <div class="card" style="border-color: var(--amber);">
-            <label style="color:var(--amber)">🎯 کارهای پیشنهادی امروز</label>
-            <div id="home-task-list"></div>
-            <div class="stats-row" id="task-stats"></div>
-            <button class="clear-tasks-btn" onclick="clearCompletedTasks()">🧹 پاک کردن کارهای انجام‌شده</button>
+        <!-- ✨ بخش جدید: تایم خالی دارم! -->
+        <div class="card idle-card">
+            <label style="color:var(--orange)">⚡ الان وقت خالی دارم!</label>
+            <div style="font-size:0.75rem; color:var(--muted); margin-bottom:10px;">
+                AI بر اساس کاری که الان داری می‌کنی، یه ترکیب پیشنهاد می‌ده
+            </div>
+            <button class="btn btn-orange" style="width:100%;" onclick="openIdleModal()">
+                🎯 چی الان می‌تونم انجام بدم؟
+            </button>
+            <div id="idle-suggestions" style="margin-top:12px;"></div>
         </div>
 
-        <!-- بخش ۳: گزارش سریع -->
+        <!-- بخش کارهای پیشنهادی امروز -->
+        <div class="card" style="border-color: var(--amber);">
+            <label style="color:var(--amber)">📋 کارهای پیشنهادی امروز</label>
+            <div id="today-context-info" style="font-size:0.7rem; color:var(--muted); margin-bottom:10px;"></div>
+            <div id="home-task-list"></div>
+            <div class="stats-row" id="task-stats"></div>
+            <div style="display:flex; gap:6px; margin-top:8px;">
+                <button class="btn btn-amber" style="flex:1; font-size:0.75rem;" onclick="openNightlyReview()">🌙 برنامه‌ریزی</button>
+                <button class="btn-icon" style="font-size:1rem;" onclick="rebuildTodayPlan()" title="بازسازی">🔄</button>
+            </div>
+        </div>
+
+        <!-- بخش ثبت سریع کار -->
+        <div class="card" style="border-color: var(--cyan);">
+            <label style="color:var(--cyan)">⚡ ثبت سریع کار</label>
+            <div class="input-row">
+                <input type="text" id="quick-task-input" placeholder="مثلا: زنگ زدن به دندون‌پزشک">
+                <button class="btn-icon" onclick="quickAddTask()">➕</button>
+            </div>
+            <div class="quick-add-row">
+                <select id="quick-task-priority">
+                    <option value="high">🔴 فوری</option>
+                    <option value="medium" selected>🟡 معمولی</option>
+                    <option value="low">🟢 وقت داشتم</option>
+                </select>
+                <select id="quick-task-context">
+                    <option value="home">🏠 خونه</option>
+                    <option value="outdoor">🌆 بیرون</option>
+                    <option value="online">💻 آنلاین</option>
+                    <option value="phone">📞 تلفن</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- بخش گزارش سریع -->
         <div class="card chat-card" style="border-color: var(--blue);">
             <label style="color:var(--blue)">🚀 گزارش سریع</label>
+            <div style="font-size:0.7rem; color:var(--muted); margin-bottom:8px;">
+                💡 تجربه‌ت رو هم بگو: "موقع آشپزی، خوب بود ایمیل جواب دادم"
+            </div>
             <div class="input-row">
                 <textarea id="status-input" rows="1" class="scrollable-input" placeholder="الان کجا و مشغول چه کاری؟"></textarea>
                 <button id="mic-quick" class="btn-icon" onclick="toggleMic('status-input', 'quick')">🎤</button>
@@ -241,9 +318,12 @@
             <div id="quick-chat-log" class="chat-container"></div>
         </div>
 
-        <!-- بخش ۴: میز مشورت -->
+        <!-- بخش میز مشورت -->
         <div class="card chat-card">
             <label>🧠 میز مشورت</label>
+            <div style="font-size:0.7rem; color:var(--muted); margin-bottom:8px;">
+                💡 برای تجزیه‌ی هدف بلندمدت، اینجا با AI مشورت کن
+            </div>
             <div class="input-row">
                 <textarea id="chat-input" rows="2" placeholder="یه گفتگوی عمیق‌تر..."></textarea>
                 <button id="mic-deep" class="btn-icon" onclick="toggleMic('chat-input', 'deep')">🎤</button>
@@ -255,18 +335,103 @@
 
     <!-- ============ صفحه استراتژی ============ -->
     <div id="page-strategy" class="page">
-        <h1>🎯 مدیریت اهداف</h1>
-        <div class="card">
-            <label>➕ افزودن کار جدید</label>
-            <input type="text" id="new-task-input" placeholder="عنوان کار...">
-            <select id="new-task-priority">
-                <option value="medium">اولویت: متوسط</option>
-                <option value="high">اولویت: بالا</option>
-                <option value="low">اولویت: پایین</option>
-            </select>
-            <button class="btn btn-primary" style="width:100%;" onclick="addManualTask()">افزودن</button>
+        <h1>🎯 مدیریت کارها و اهداف</h1>
+
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('goals')" id="tab-goals">🎯 اهداف</div>
+            <div class="tab" onclick="switchTab('all-tasks')" id="tab-all-tasks">📋 همه کارها</div>
+            <div class="tab" onclick="switchTab('pairings')" id="tab-pairings">🔗 جفت‌ها</div>
         </div>
-        <div id="lt-list-detailed"></div>
+
+        <!-- تب اهداف -->
+        <div id="tab-content-goals">
+            <div class="card">
+                <label>➕ هدف بلندمدت جدید</label>
+                <input type="text" id="new-goal-title" placeholder="مثلا: یاد گرفتن React">
+                <textarea id="new-goal-desc" rows="2" placeholder="توضیحات (اختیاری)"></textarea>
+                <button class="btn btn-primary" style="width:100%;" onclick="addGoalAndStartChat()">
+                    ➕ افزودن و شروع گفتگو با AI
+                </button>
+                <div style="font-size:0.7rem; color:var(--muted); margin-top:8px; text-align:center;">
+                    💡 AI در میز مشورت ازت سوال می‌پرسه و تجزیه می‌کنه
+                </div>
+            </div>
+            <div id="goals-list"></div>
+        </div>
+
+        <!-- تب همه کارها -->
+        <div id="tab-content-all-tasks" style="display:none;">
+            <div class="card">
+                <label>➕ افزودن کار</label>
+                <input type="text" id="new-task-input" placeholder="عنوان کار...">
+                <div class="quick-add-row">
+                    <select id="new-task-priority">
+                        <option value="medium">🟡 اولویت متوسط</option>
+                        <option value="high">🔴 اولویت بالا</option>
+                        <option value="low">🟢 اولویت پایین</option>
+                    </select>
+                    <select id="new-task-context">
+                        <option value="home">🏠 خونه</option>
+                        <option value="outdoor">🌆 بیرون</option>
+                        <option value="online">💻 آنلاین</option>
+                        <option value="phone">📞 تلفن</option>
+                    </select>
+                </div>
+                <div class="quick-add-row">
+                    <select id="new-task-energy">
+                        <option value="low">💨 سبک</option>
+                        <option value="medium" selected>🌊 متوسط</option>
+                        <option value="high">🔥 سنگین</option>
+                    </select>
+                    <select id="new-task-time">
+                        <option value="5">⏱ ۵ دقیقه</option>
+                        <option value="15" selected>⏱ ۱۵ دقیقه</option>
+                        <option value="30">⏱ ۳۰ دقیقه</option>
+                        <option value="60">⏱ ۱ ساعت</option>
+                        <option value="120">⏱ ۲+ ساعت</option>
+                    </select>
+                </div>
+                <input type="date" id="new-task-deadline" placeholder="ددلاین (اختیاری)">
+                <button class="btn btn-primary" style="width:100%;" onclick="addManualTask()">افزودن</button>
+            </div>
+
+            <div class="card">
+                <label>🔍 فیلتر</label>
+                <div class="quick-add-row">
+                    <select id="filter-status" onchange="render()">
+                        <option value="all">همه</option>
+                        <option value="active" selected>فعال</option>
+                        <option value="done">انجام‌شده</option>
+                    </select>
+                    <select id="filter-context" onchange="render()">
+                        <option value="all">همه context ها</option>
+                        <option value="home">🏠 خونه</option>
+                        <option value="outdoor">🌆 بیرون</option>
+                        <option value="online">💻 آنلاین</option>
+                        <option value="phone">📞 تلفن</option>
+                    </select>
+                    <select id="filter-energy" onchange="render()">
+                        <option value="all">همه انرژی‌ها</option>
+                        <option value="low">💨 سبک</option>
+                        <option value="medium">🌊 متوسط</option>
+                        <option value="high">🔥 سنگین</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="lt-list-detailed"></div>
+        </div>
+
+        <!-- ✨ تب جدید: جفت‌های یادگرفته‌شده -->
+        <div id="tab-content-pairings" style="display:none;">
+            <div class="card">
+                <label>🔗 جفت‌هایی که سیکا یاد گرفته</label>
+                <div style="font-size:0.75rem; color:var(--muted); margin-bottom:10px; line-height:1.7;">
+                    هر بار که می‌گی "موقع X خوب بود Y کنارش انجام دادم"، اینجا ذخیره میشه و در پیشنهادهای بعدی استفاده میشه.
+                </div>
+                <div id="pairings-list"></div>
+            </div>
+        </div>
     </div>
 
     <!-- ============ صفحه تنظیمات ============ -->
@@ -278,44 +443,49 @@
 
             <label>🔊 زبان پاسخ صوتی</label>
             <select id="voice-mode">
-                <option value="auto">خودکار (فارسی اگر موجود، وگرنه انگلیسی)</option>
+                <option value="auto">خودکار</option>
                 <option value="fa">فقط فارسی</option>
                 <option value="en">فقط انگلیسی</option>
                 <option value="off">خاموش</option>
             </select>
-            <div id="voice-availability" class="voice-status">در حال بررسی صداهای موجود...</div>
-
+            <div id="voice-availability" class="voice-status">در حال بررسی...</div>
             <div id="voice-help" class="help-box" style="display:none;">
-                <b>⚠️ صدای مناسب پیدا نشد</b><br>
-                دستگاه شما TTS نصب نکرده. برای فعال‌سازی:<br><br>
-                <b>اندروید:</b> Settings → Accessibility → Text-to-speech output → نصب صدای فارسی یا Google TTS<br><br>
-                <b>iOS:</b> Settings → Accessibility → Spoken Content → Voices → دانلود صدای فارسی<br><br>
-                <b>ویندوز:</b> Settings → Time & Language → Speech → Add a voice<br><br>
-                <b>مک:</b> System Settings → Accessibility → Spoken Content → System Voice → Manage Voices
+                <b>⚠️ صدا نصب نیست</b><br>
+                <b>اندروید:</b> Settings → Accessibility → Text-to-speech<br>
+                <b>iOS:</b> Settings → Accessibility → Spoken Content → Voices<br>
+                <b>ویندوز:</b> Settings → Time & Language → Speech<br>
+                <b>مک:</b> System Settings → Accessibility → Spoken Content
             </div>
 
-            <label style="margin-top:15px;">📏 ارتفاع کادرهای چت (پیکسل)</label>
+            <label style="margin-top:15px;">🌙 ساعت مرور شبانه</label>
+            <input type="time" id="nightly-review-time" value="22:00">
+
+            <label>🔔 نوتیفیکیشن مرور شبانه</label>
+            <select id="notif-enabled">
+                <option value="yes">فعال</option>
+                <option value="no">غیرفعال</option>
+            </select>
+            <button onclick="requestNotifPermission()" style="width:100%; background:var(--blue); color:white; border:none; padding:10px; border-radius:12px; margin-bottom:10px; cursor:pointer; font-size:0.8rem;">
+                🔓 درخواست دسترسی نوتیفیکیشن
+            </button>
+            <div id="notif-status" style="font-size:0.7rem; color:var(--muted); margin-bottom:10px;"></div>
+
+            <label>📏 ارتفاع کادرهای چت</label>
             <select id="chat-height">
-                <option value="280">کوتاه (280)</option>
-                <option value="380" selected>متوسط (380)</option>
-                <option value="500">بلند (500)</option>
-                <option value="650">خیلی بلند (650)</option>
+                <option value="280">کوتاه</option>
+                <option value="380" selected>متوسط</option>
+                <option value="500">بلند</option>
+                <option value="650">خیلی بلند</option>
             </select>
 
-            <label>⏰ بازه بررسی (ساعت)</label>
-            <select id="interval-check">
-                <option value="1">هر ۱ ساعت</option>
-                <option value="2" selected>هر ۲ ساعت</option>
-                <option value="4">هر ۴ ساعت</option>
+            <label>📊 تعداد پیشنهادی برای امروز</label>
+            <select id="suggest-count">
+                <option value="3">۳ کار</option>
+                <option value="5" selected>۵ کار</option>
+                <option value="7">۷ کار</option>
+                <option value="10">۱۰ کار</option>
             </select>
-            <label>📊 بازه فیدبک (ساعت)</label>
-            <select id="interval-feedback">
-                <option value="2">هر ۲ ساعت</option>
-                <option value="4" selected>هر ۴ ساعت</option>
-                <option value="8">هر ۸ ساعت</option>
-            </select>
-            <label>🌙 ساعت مرور شبانه</label>
-            <input type="time" id="nightly-review-time" value="23:30">
+
             <button class="btn btn-primary" style="width:100%; padding:15px;" onclick="saveSettings()">
                 💾 ذخیره تنظیمات
             </button>
@@ -326,127 +496,191 @@
                 🗑️ پاکسازی کامل داده‌ها
             </button>
         </div>
-        <div class="card">
-            <label>📚 درباره</label>
-            <div style="font-size: 0.8rem; color: var(--muted); line-height: 1.7;">
-                Syca v17 — مربی هوشمند شخصی شما<br>
-                مبتنی بر Gemini API<br>
-                داده‌ها در مرورگر شما (localStorage) ذخیره می‌شوند.
+    </div>
+</div>
+
+<!-- ============ مودال مرور شبانه ============ -->
+<div id="nightly-modal" class="modal-overlay">
+    <div class="modal">
+        <h2 style="margin-top:0;">🌙 مرور شبانه</h2>
+        <div id="nightly-step-1">
+            <div class="review-question">
+                <p><b>۱. فردا کجا قراره باشی؟</b></p>
+                <div class="ctx-options" id="tomorrow-context">
+                    <div class="ctx-chip" data-ctx="home" onclick="toggleCtx(this)">🏠 خونه</div>
+                    <div class="ctx-chip" data-ctx="outdoor" onclick="toggleCtx(this)">🌆 بیرون می‌رم</div>
+                    <div class="ctx-chip" data-ctx="online" onclick="toggleCtx(this)">💻 آنلاین کار می‌کنم</div>
+                    <div class="ctx-chip" data-ctx="phone" onclick="toggleCtx(this)">📞 می‌تونم تلفن کنم</div>
+                </div>
             </div>
+            <div class="review-question">
+                <p><b>۲. چند ساعت آزاد داری؟</b></p>
+                <select id="tomorrow-hours">
+                    <option value="1">۱ ساعت یا کمتر</option>
+                    <option value="2">۲ ساعت</option>
+                    <option value="4" selected>۳-۴ ساعت</option>
+                    <option value="6">۵-۶ ساعت</option>
+                    <option value="8">بیشتر از ۶ ساعت</option>
+                </select>
+            </div>
+            <div class="review-question">
+                <p><b>۳. انرژیت فردا چطوره؟</b></p>
+                <select id="tomorrow-energy">
+                    <option value="low">😴 کم</option>
+                    <option value="medium" selected>😐 متوسط</option>
+                    <option value="high">⚡ زیاد</option>
+                </select>
+            </div>
+            <div class="review-question">
+                <p><b>۴. چیز خاصی هست که حتما باید فردا انجام بدی؟</b></p>
+                <textarea id="tomorrow-notes" rows="2" placeholder="مثلا: ایمیل به X، تماس با Y..."></textarea>
+            </div>
+            <div style="display:flex; gap:8px;">
+                <button class="btn btn-primary" style="flex:1;" onclick="submitNightlyReview()">
+                    ✨ تولید برنامه
+                </button>
+                <button class="btn-icon" onclick="closeNightlyReview()">✕</button>
+            </div>
+        </div>
+        <div id="nightly-step-2" style="display:none; text-align:center;">
+            <div style="font-size:2rem; margin:20px 0;">⏳</div>
+            <p>سیکا داره بهترین کارها رو برات انتخاب می‌کنه...</p>
+        </div>
+    </div>
+</div>
+
+<!-- ✨ مودال جدید: Idle Time -->
+<div id="idle-modal" class="modal-overlay">
+    <div class="modal">
+        <h2 style="margin-top:0;">⚡ تایم خالی دارم!</h2>
+        <div id="idle-step-1">
+            <div class="review-question">
+                <p><b>۱. الان داری چیکار می‌کنی؟</b></p>
+                <input type="text" id="idle-current-activity" placeholder="مثلا: آشپزی، رانندگی، انتظار..." list="common-activities">
+                <datalist id="common-activities">
+                    <option value="آشپزی"><option value="رانندگی"><option value="در حال رفتن به جایی">
+                    <option value="انتظار در صف"><option value="در حال خوردن غذا"><option value="در حال ورزش">
+                    <option value="در حال استراحت"><option value="در حال build شدن کد">
+                </datalist>
+            </div>
+            <div class="review-question">
+                <p><b>۲. چقدر وقت آزاد داری؟</b></p>
+                <select id="idle-time">
+                    <option value="5">⏱ ۵ دقیقه</option>
+                    <option value="15" selected>⏱ ۱۵ دقیقه</option>
+                    <option value="30">⏱ ۳۰ دقیقه</option>
+                    <option value="60">⏱ ۱ ساعت</option>
+                </select>
+            </div>
+            <div class="review-question">
+                <p><b>۳. الان کجایی؟</b></p>
+                <select id="idle-context">
+                    <option value="home">🏠 خونه</option>
+                    <option value="outdoor">🌆 بیرون</option>
+                    <option value="online">💻 پشت کامپیوتر</option>
+                    <option value="phone">📞 می‌تونم تلفن کنم</option>
+                </select>
+            </div>
+            <div style="display:flex; gap:8px;">
+                <button class="btn btn-orange" style="flex:1;" onclick="generateIdleSuggestions()">
+                    🎯 پیشنهاد بده
+                </button>
+                <button class="btn-icon" onclick="closeIdleModal()">✕</button>
+            </div>
+        </div>
+        <div id="idle-step-2" style="display:none; text-align:center;">
+            <div style="font-size:2rem; margin:20px 0;">⏳</div>
+            <p>در حال یافتن بهترین ترکیب...</p>
         </div>
     </div>
 </div>
 
 <nav>
     <div onclick="showPage('home')" id="nav-home" class="active">🏠<br>امروز</div>
-    <div onclick="showPage('strategy')" id="nav-strategy">🎯<br>استراتژی</div>
+    <div onclick="showPage('strategy')" id="nav-strategy">🎯<br>کارها</div>
     <div onclick="showPage('settings')" id="nav-settings">⚙️<br>تنظیمات</div>
 </nav>
 
 <script>
-// ============ دیتابیس ============
-let db = JSON.parse(localStorage.getItem('syca_db')) || {
+// ============ دیتابیس v19 ============
+let db = JSON.parse(localStorage.getItem('syca_db_v19')) || {
+    goals: [],
     tasks: [],
-    logs: [],
+    pairings: [],  // ✨ جدید: یادگیری از تجربه
+    todayPlan: { date: null, context: [], availableHours: 4, energyLevel: 'medium', suggestedTaskIds: [], notes: '' },
     chatHistory: { quick: [], deep: [] },
-    settings: { 
-        key: "", checkInt: "2", feedInt: "4", nightTime: "23:30",
-        voiceMode: "auto", chatHeight: "380"
+    settings: {
+        key: "", nightTime: "22:00", voiceMode: "auto",
+        chatHeight: "380", suggestCount: "5", notifEnabled: "yes"
     },
-    lastSummary: "",
-    lastMood: ""
+    lastSummary: "", lastMood: "", lastNightlyReviewDate: null,
+    pendingGoalChat: null  // برای chat-based goal breakdown
 };
 
 let recognition = null;
 let currentRecordingType = null;
+let activeTab = 'goals';
 
-// ============ اعمال ارتفاع چت بر اساس تنظیمات ============
+// ============ ابزار ============
+function escapeHtml(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+function saveDB() { localStorage.setItem('syca_db_v19', JSON.stringify(db)); }
+function generateId() { return Date.now().toString(36) + Math.random().toString(36).substr(2, 5); }
+function todayStr() { return new Date().toISOString().split('T')[0]; }
+function tomorrowStr() {
+    const d = new Date(); d.setDate(d.getDate() + 1);
+    return d.toISOString().split('T')[0];
+}
+
 function applyChatHeight() {
     const h = db.settings.chatHeight || "380";
-    document.querySelectorAll('.chat-card').forEach(c => {
-        c.style.height = h + 'px';
-    });
+    document.querySelectorAll('.chat-card').forEach(c => c.style.height = h + 'px');
 }
 
-// ============ مدیریت صداهای TTS ============
-let availableVoices = [];
-let persianVoice = null;
-let englishVoice = null;
-
+// ============ TTS ============
+let availableVoices = [], persianVoice = null, englishVoice = null;
 function loadVoices() {
-    if (!('speechSynthesis' in window)) {
-        updateVoiceStatus();
-        return;
-    }
-
+    if (!('speechSynthesis' in window)) { updateVoiceStatus(); return; }
     availableVoices = window.speechSynthesis.getVoices();
-
-    persianVoice = availableVoices.find(v =>
-        v.lang === 'fa-IR' ||
-        v.lang === 'fa' ||
-        v.lang.startsWith('fa-') ||
-        v.lang === 'fa_IR' ||
-        /persian|farsi|iran/i.test(v.name)
-    );
-
-    englishVoice = availableVoices.find(v => v.lang === 'en-US') ||
-                   availableVoices.find(v => v.lang === 'en-GB') ||
-                   availableVoices.find(v => v.lang.startsWith('en-')) ||
-                   availableVoices.find(v => v.lang === 'en') ||
-                   availableVoices.find(v => /english/i.test(v.name));
-
-    console.log('Voices:', availableVoices.length, 'FA:', persianVoice?.name, 'EN:', englishVoice?.name);
+    persianVoice = availableVoices.find(v => v.lang === 'fa-IR' || v.lang === 'fa' || v.lang.startsWith('fa-') || /persian|farsi|iran/i.test(v.name));
+    englishVoice = availableVoices.find(v => v.lang === 'en-US') || availableVoices.find(v => v.lang === 'en-GB') || availableVoices.find(v => v.lang.startsWith('en-')) || availableVoices.find(v => /english/i.test(v.name));
     updateVoiceStatus();
 }
-
 function updateVoiceStatus() {
     const el = document.getElementById('voice-availability');
     const helpEl = document.getElementById('voice-help');
     if (!el) return;
-
-    if (!('speechSynthesis' in window)) {
-        el.innerHTML = `❌ مرورگر شما از TTS پشتیبانی نمی‌کند.`;
-        if (helpEl) helpEl.style.display = 'block';
-        return;
-    }
-
-    if (availableVoices.length === 0) {
-        el.innerHTML = `⏳ در حال بارگذاری...`;
-        return;
-    }
-
+    if (!('speechSynthesis' in window)) { el.innerHTML = '❌ TTS پشتیبانی نمی‌شود'; if (helpEl) helpEl.style.display = 'block'; return; }
+    if (availableVoices.length === 0) { el.innerHTML = '⏳ بارگذاری...'; return; }
     const fa = persianVoice ? `✅ فارسی: ${persianVoice.name}` : '❌ فارسی موجود نیست';
     const en = englishVoice ? `✅ انگلیسی: ${englishVoice.name}` : '❌ انگلیسی موجود نیست';
     el.innerHTML = `${fa}<br>${en}<br><span style="color:var(--muted)">کل: ${availableVoices.length}</span>`;
-
-    if (helpEl) {
-        helpEl.style.display = (!persianVoice && !englishVoice) ? 'block' : 'none';
-    }
+    if (helpEl) helpEl.style.display = (!persianVoice && !englishVoice) ? 'block' : 'none';
 }
-
 if ('speechSynthesis' in window) {
     loadVoices();
     window.speechSynthesis.onvoiceschanged = loadVoices;
-    setTimeout(loadVoices, 100);
-    setTimeout(loadVoices, 500);
-    setTimeout(loadVoices, 1500);
+    setTimeout(loadVoices, 500); setTimeout(loadVoices, 1500);
 }
-
-// ============ ابزار ============
-function escapeHtml(s) {
-    return String(s)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
-}
-
-function saveDB() {
-    localStorage.setItem('syca_db', JSON.stringify(db));
-}
-
-function generateId() {
-    return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+function speak(persianText, englishText) {
+    try {
+        if (!('speechSynthesis' in window)) return;
+        const mode = db.settings.voiceMode || "auto";
+        if (mode === "off") return;
+        if (availableVoices.length === 0) loadVoices();
+        if (availableVoices.length === 0) return;
+        window.speechSynthesis.cancel();
+        let textToSpeak = "", voiceToUse = null, langToUse = "";
+        if (mode === "fa") { if (!persianVoice) return; textToSpeak = persianText; voiceToUse = persianVoice; langToUse = "fa-IR"; }
+        else if (mode === "en") { if (!englishVoice) return; textToSpeak = englishText || persianText; voiceToUse = englishVoice; langToUse = "en-US"; }
+        else { if (persianVoice) { textToSpeak = persianText; voiceToUse = persianVoice; langToUse = "fa-IR"; } else if (englishVoice && englishText) { textToSpeak = englishText; voiceToUse = englishVoice; langToUse = "en-US"; } else return; }
+        if (!textToSpeak) return;
+        const u = new SpeechSynthesisUtterance(textToSpeak);
+        u.lang = langToUse; if (voiceToUse) u.voice = voiceToUse;
+        u.rate = 1.0; u.pitch = 1.0; u.volume = 1.0;
+        setTimeout(() => window.speechSynthesis.speak(u), 100);
+    } catch (e) { console.error("Speak error:", e); }
 }
 
 // ============ ناوبری ============
@@ -455,228 +689,742 @@ function showPage(p) {
     document.querySelectorAll('nav div').forEach(el => el.classList.remove('active'));
     document.getElementById('page-' + p).classList.add('active');
     document.getElementById('nav-' + p).classList.add('active');
-    if (p === 'settings') {
-        loadSettings();
-        loadVoices();
-    }
+    if (p === 'settings') { loadSettings(); loadVoices(); updateNotifStatus(); }
+    render();
+}
+
+function switchTab(tab) {
+    activeTab = tab;
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('tab-' + tab).classList.add('active');
+    document.getElementById('tab-content-goals').style.display = tab === 'goals' ? 'block' : 'none';
+    document.getElementById('tab-content-all-tasks').style.display = tab === 'all-tasks' ? 'block' : 'none';
+    document.getElementById('tab-content-pairings').style.display = tab === 'pairings' ? 'block' : 'none';
     render();
 }
 
 // ============ تنظیمات ============
 function loadSettings() {
     document.getElementById('api-key-input').value = db.settings.key || "";
-    document.getElementById('interval-check').value = db.settings.checkInt || "2";
-    document.getElementById('interval-feedback').value = db.settings.feedInt || "4";
-    document.getElementById('nightly-review-time').value = db.settings.nightTime || "23:30";
+    document.getElementById('nightly-review-time').value = db.settings.nightTime || "22:00";
     document.getElementById('voice-mode').value = db.settings.voiceMode || "auto";
     document.getElementById('chat-height').value = db.settings.chatHeight || "380";
+    document.getElementById('suggest-count').value = db.settings.suggestCount || "5";
+    document.getElementById('notif-enabled').value = db.settings.notifEnabled || "yes";
 }
-
 function saveSettings() {
     db.settings.key = document.getElementById('api-key-input').value.trim();
-    db.settings.checkInt = document.getElementById('interval-check').value;
-    db.settings.feedInt = document.getElementById('interval-feedback').value;
     db.settings.nightTime = document.getElementById('nightly-review-time').value;
     db.settings.voiceMode = document.getElementById('voice-mode').value;
     db.settings.chatHeight = document.getElementById('chat-height').value;
+    db.settings.suggestCount = document.getElementById('suggest-count').value;
+    db.settings.notifEnabled = document.getElementById('notif-enabled').value;
     saveDB();
     applyChatHeight();
-    alert("✅ تنظیمات ذخیره شد.");
+    alert("✅ ذخیره شد.");
 }
-
 function testVoice() {
-    const mode = document.getElementById('voice-mode').value;
-    if (mode === 'off') return alert("صدا خاموش است.");
+    if (db.settings.voiceMode === 'off') return alert("صدا خاموش است.");
     if (availableVoices.length === 0) loadVoices();
-    if (!persianVoice && !englishVoice) {
-        return alert("⚠️ هیچ صدای مناسبی نصب نیست. راهنمای زیر فیلد را ببینید.");
-    }
-    speak("سلام، این یک تست صدا است.", "Hello, this is a voice test from Syca.");
+    if (!persianVoice && !englishVoice) return alert("⚠️ صدا نصب نیست.");
+    speak("سلام، تست صدا.", "Hello, voice test.");
 }
 
-// ============ میکروفون ============
-function toggleMic(inputId, type) {
-    const micBtn = document.getElementById('mic-' + type);
+// ============ نوتیفیکیشن ============
+async function requestNotifPermission() {
+    if (!('Notification' in window)) return alert("⚠️ پشتیبانی نمی‌شود.");
+    const result = await Notification.requestPermission();
+    updateNotifStatus();
+    alert(result === 'granted' ? "✅ دسترسی داده شد." : "❌ رد شد.");
+}
+function updateNotifStatus() {
+    const el = document.getElementById('notif-status');
+    if (!el) return;
+    if (!('Notification' in window)) { el.innerText = "❌ پشتیبانی نمی‌شود"; return; }
+    const status = Notification.permission;
+    el.innerText = status === 'granted' ? "✅ دسترسی داده شده" : status === 'denied' ? "❌ رد شده" : "⏳ هنوز درخواست نشده";
+}
 
-    if (recognition && currentRecordingType === type) {
-        recognition.stop();
+// ============ زمان‌سنج مرور شبانه ============
+let nightlyTimer = null;
+function scheduleNightlyReview() {
+    if (nightlyTimer) clearTimeout(nightlyTimer);
+    if (!db.settings.nightTime) return;
+    const [h, m] = db.settings.nightTime.split(':').map(Number);
+    const now = new Date();
+    const target = new Date();
+    target.setHours(h, m, 0, 0);
+    if (target <= now) target.setDate(target.getDate() + 1);
+    const delay = target - now;
+    nightlyTimer = setTimeout(() => { triggerNightlyReview(); scheduleNightlyReview(); }, delay);
+}
+
+function triggerNightlyReview() {
+    if (db.lastNightlyReviewDate === todayStr()) return;
+    if (db.settings.notifEnabled === 'yes' && 'Notification' in window && Notification.permission === 'granted') {
+        const notif = new Notification('🌙 سیکا - مرور شبانه', {
+            body: 'وقتشه برای فردا برنامه‌ریزی کنیم.',
+            requireInteraction: true
+        });
+        notif.onclick = () => { window.focus(); openNightlyReview(); notif.close(); };
+    }
+    showNightlyBanner();
+}
+
+function showNightlyBanner() {
+    const b = document.getElementById('nightly-banner');
+    if (!b) return;
+    if (db.lastNightlyReviewDate !== todayStr()) {
+        const [h, m] = db.settings.nightTime.split(':').map(Number);
+        const now = new Date();
+        if (now.getHours() > h || (now.getHours() === h && now.getMinutes() >= m)) {
+            b.style.display = 'flex';
+            return;
+        }
+    }
+    b.style.display = 'none';
+}
+
+// ============ مرور شبانه - Modal ============
+function openNightlyReview() {
+    document.getElementById('nightly-modal').classList.add('active');
+    document.getElementById('nightly-step-1').style.display = 'block';
+    document.getElementById('nightly-step-2').style.display = 'none';
+    document.querySelectorAll('#tomorrow-context .ctx-chip').forEach(c => {
+        c.classList.toggle('selected', c.dataset.ctx === 'home');
+    });
+}
+function closeNightlyReview() { document.getElementById('nightly-modal').classList.remove('active'); }
+function toggleCtx(el) { el.classList.toggle('selected'); }
+
+async function submitNightlyReview() {
+    const selectedCtx = Array.from(document.querySelectorAll('#tomorrow-context .ctx-chip.selected')).map(c => c.dataset.ctx);
+    if (selectedCtx.length === 0) return alert("حداقل یک گزینه انتخاب کن.");
+    const hours = parseInt(document.getElementById('tomorrow-hours').value);
+    const energy = document.getElementById('tomorrow-energy').value;
+    const notes = document.getElementById('tomorrow-notes').value.trim();
+
+    document.getElementById('nightly-step-1').style.display = 'none';
+    document.getElementById('nightly-step-2').style.display = 'block';
+
+    db.todayPlan = { date: tomorrowStr(), context: selectedCtx, availableHours: hours, energyLevel: energy, notes, suggestedTaskIds: [] };
+    if (notes) await extractTasksFromNotes(notes);
+    await generateTodaySuggestions();
+    db.lastNightlyReviewDate = todayStr();
+    saveDB();
+    closeNightlyReview();
+    document.getElementById('nightly-banner').style.display = 'none';
+    showPage('home');
+    alert("✨ برنامه فردا آماده شد!");
+}
+
+async function extractTasksFromNotes(notes) {
+    if (!db.settings.key) return;
+    const prompt = `از این متن، کارهایی که باید فردا انجام بشن رو استخراج کن. برای هر کار، energy و time و context رو هم تخمین بزن:
+"${notes}"
+
+JSON:
+{
+  "tasks": [
+    { "title": "...", "priority": "high|medium|low", "context": "home|outdoor|online|phone", "energyRequired": "high|medium|low", "estimatedMinutes": 5|15|30|60 }
+  ]
+}`;
+    try {
+        const data = await callGemini(prompt);
+        if (data?.tasks) {
+            data.tasks.forEach(t => {
+                if (t.title) {
+                    db.tasks.push({
+                        id: generateId(), title: t.title, type: 'oneshot',
+                        priority: t.priority || 'medium', urgency: 'urgent',
+                        context: [t.context || 'home'], dependsOn: [],
+                        deadline: tomorrowStr(),
+                        energyRequired: t.energyRequired || 'medium',
+                        estimatedMinutes: t.estimatedMinutes || 15,
+                        parallelizable: false, interruptible: true,
+                        done: false, createdAt: new Date().toISOString(),
+                        source: 'nightly-review'
+                    });
+                }
+            });
+        }
+    } catch (e) { console.error("Extract error:", e); }
+}
+
+async function generateTodaySuggestions() {
+    if (!db.settings.key || db.tasks.length === 0) return;
+    const plan = db.todayPlan;
+    const count = parseInt(db.settings.suggestCount) || 5;
+
+    const activeTasks = db.tasks.filter(t => !t.done);
+    const completedIds = new Set(db.tasks.filter(t => t.done).map(t => t.id));
+
+    const eligible = activeTasks.filter(t => {
+        if (t.dependsOn?.length > 0 && !t.dependsOn.every(id => completedIds.has(id))) return false;
+        if (t.context?.length > 0 && !t.context.some(c => plan.context.includes(c))) return false;
+        return true;
+    });
+
+    if (eligible.length === 0) {
+        db.todayPlan.suggestedTaskIds = [];
         return;
     }
 
-    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRec) return alert("⚠️ مرورگر از تشخیص گفتار پشتیبانی نمی‌کند.");
+    const prompt = `تو سیکا هستی. کاربر فردا:
+- بستر: ${plan.context.join(', ')}
+- ساعات آزاد: ${plan.availableHours}
+- انرژی: ${plan.energyLevel}
 
-    recognition = new SpeechRec();
-    recognition.lang = 'fa-IR';
-    recognition.continuous = true;
-    currentRecordingType = type;
+لیست کارهای واجد شرایط:
+${eligible.map(t => `[${t.id}] ${t.title} | اولویت:${t.priority} | انرژی:${t.energyRequired||'medium'} | زمان:${t.estimatedMinutes||15}دقیقه | context:${t.context?.join(',')} | deadline:${t.deadline||'ندارد'}`).join('\n')}
 
-    recognition.onstart = () => micBtn.classList.add('recording');
+بهترین ${count} کار:
+- فوریت + اهمیت بالاتر
+- انرژی موردنیاز با انرژی موجود match کنه
+- ددلاین نزدیک‌تر اولویت
+- جمع زمان‌ها با ساعات آزاد سازگار
 
-    recognition.onresult = (e) => {
-        let t = "";
-        for (let i = 0; i < e.results.length; i++) {
-            t += e.results[i][0].transcript;
+❗ JSON:
+{
+  "selectedTaskIds": ["id1", ...],
+  "reasoning": "یک جمله فارسی"
+}`;
+
+    try {
+        const data = await callGemini(prompt);
+        if (data?.selectedTaskIds) {
+            db.todayPlan.suggestedTaskIds = data.selectedTaskIds.slice(0, count);
+            db.lastSummary = data.reasoning || "برنامه آماده است.";
         }
-        document.getElementById(inputId).value = t;
-    };
+    } catch (e) { console.error("Suggestions error:", e); }
+}
 
-    recognition.onerror = (e) => {
-        console.error("Speech error:", e.error);
-        micBtn.classList.remove('recording');
-        recognition = null;
-        currentRecordingType = null;
-    };
+async function rebuildTodayPlan() {
+    if (!db.todayPlan.context || db.todayPlan.context.length === 0) {
+        return alert("ابتدا یک مرور شبانه انجام بده.");
+    }
+    await generateTodaySuggestions();
+    saveDB();
+    render();
+}
 
-    recognition.onend = () => {
-        micBtn.classList.remove('recording');
-        const wasType = currentRecordingType;
-        recognition = null;
-        currentRecordingType = null;
-        if (wasType && document.getElementById(inputId).value.trim()) {
-            setTimeout(() => handleAI(wasType), 500);
+// ============ ✨ Idle Time Modal ============
+function openIdleModal() {
+    document.getElementById('idle-modal').classList.add('active');
+    document.getElementById('idle-step-1').style.display = 'block';
+    document.getElementById('idle-step-2').style.display = 'none';
+}
+function closeIdleModal() { document.getElementById('idle-modal').classList.remove('active'); }
+
+async function generateIdleSuggestions() {
+    const activity = document.getElementById('idle-current-activity').value.trim();
+    const time = parseInt(document.getElementById('idle-time').value);
+    const context = document.getElementById('idle-context').value;
+
+    if (!activity) return alert("لطفا بگو الان داری چیکار می‌کنی.");
+    if (!db.settings.key) return alert("⚠️ ابتدا API Key.");
+
+    document.getElementById('idle-step-1').style.display = 'none';
+    document.getElementById('idle-step-2').style.display = 'block';
+
+    const activeTasks = db.tasks.filter(t => !t.done);
+    const completedIds = new Set(db.tasks.filter(t => t.done).map(t => t.id));
+
+    // فیلتر اولیه: کارهای سبک، قابل موازی‌سازی، context match
+    const eligible = activeTasks.filter(t => {
+        if (t.dependsOn?.length > 0 && !t.dependsOn.every(id => completedIds.has(id))) return false;
+        if (t.context?.length > 0 && !t.context.includes(context)) return false;
+        if ((t.estimatedMinutes || 15) > time) return false;
+        return true;
+    });
+
+    // پیدا کردن pairing های قبلی مرتبط
+    const relevantPairings = db.pairings.filter(p =>
+        p.mainActivity && (
+            activity.includes(p.mainActivity) ||
+            p.mainActivity.includes(activity)
+        )
+    );
+
+    const prompt = `کاربر ADHD داره و الان مشغول "${activity}" هست. ${time} دقیقه وقت خالی داره. context: ${context}.
+
+کارهای واجد شرایط (کارهای سبک که با ${activity} موازی قابل انجامه):
+${eligible.length > 0 ? eligible.map(t => `[${t.id}] ${t.title} | انرژی:${t.energyRequired||'medium'} | زمان:${t.estimatedMinutes||15}دقیقه`).join('\n') : 'هیچ کار مناسبی در لیست نیست'}
+
+تجربه‌های قبلی کاربر:
+${relevantPairings.length > 0 ? relevantPairings.map(p => `موقع ${p.mainActivity} خوب بوده: ${p.companions.join(', ')}`).join('\n') : 'تجربه قبلی ندارد'}
+
+وظیفه:
+1. یه ترکیب پیشنهاد بده: "${activity} + کار از لیست + شاید یه فعالیت پس‌زمینه (پادکست/موسیقی)"
+2. اگه کاری در لیست نیست، فعالیت‌های ذهنی-سبک پیشنهاد بده (مرور برنامه، نوشتن ایده، تماس کوتاه با کسی، یاد گرفتن چیز کوچیک)
+3. حواست به ADHD باشه: کارهای سنگین که ذهن رو درگیر می‌کنه پیشنهاد نده
+
+❗ JSON:
+{
+  "bundle": {
+    "title": "عنوان جذاب ترکیب",
+    "items": [
+      "آیتم اول (همون activity فعلی کاربر)",
+      "آیتم دوم (یه کار از لیست یا پیشنهاد جدید)",
+      "آیتم سوم اختیاری (پادکست/موسیقی/...)"
+    ],
+    "selectedTaskIds": ["taskIds اگه از لیست انتخاب کردی"],
+    "tip": "یه نکته‌ی کوتاه فارسی برای موفقیت این ترکیب"
+  },
+  "alternatives": [
+    { "title": "پیشنهاد جایگزین کوتاه", "taskId": "اگه از لیسته" }
+  ]
+}`;
+
+    try {
+        const data = await callGemini(prompt);
+        renderIdleSuggestions(data, activity, time);
+        document.getElementById('idle-modal').classList.remove('active');
+    } catch (e) {
+        document.getElementById('idle-step-2').style.display = 'none';
+        document.getElementById('idle-step-1').style.display = 'block';
+        alert("⚠️ خطا: " + e.message);
+    }
+}
+
+function renderIdleSuggestions(data, activity, time) {
+    const el = document.getElementById('idle-suggestions');
+    if (!data?.bundle) {
+        el.innerHTML = '<div class="empty-state">پیشنهادی پیدا نشد.</div>';
+        return;
+    }
+
+    const bundle = data.bundle;
+    let html = `
+        <div class="idle-bundle">
+            <div class="idle-bundle-title">✨ ${escapeHtml(bundle.title || 'ترکیب پیشنهادی')}</div>
+            ${bundle.items.map((item, i) => `
+                <div class="idle-task-row">
+                    <span style="color:var(--orange); font-weight:bold;">${i+1}.</span>
+                    <span class="task-text">${escapeHtml(item)}</span>
+                </div>
+            `).join('')}
+            ${bundle.tip ? `<div style="margin-top:10px; font-size:0.75rem; color:var(--muted); padding:8px; background:#000; border-radius:8px;">💡 ${escapeHtml(bundle.tip)}</div>` : ''}
+            <div style="margin-top:10px; display:flex; gap:6px;">
+                <button class="btn btn-green" style="flex:1; font-size:0.75rem;" onclick="markIdleSuccess('${escapeHtml(activity)}', '${escapeHtml(JSON.stringify(bundle.items)).replace(/'/g, '&#39;')}')">
+                    ✅ خوب پیش رفت
+                </button>
+                <button class="btn-icon" style="font-size:1rem;" onclick="dismissIdle()">✕</button>
+            </div>
+        </div>
+    `;
+
+    if (data.alternatives?.length > 0) {
+        html += `<div style="margin-top:15px; font-size:0.75rem; color:var(--muted);">یا این‌ها:</div>`;
+        data.alternatives.forEach(alt => {
+            html += `<div class="idle-task-row" style="margin-top:6px;">
+                <span>•</span>
+                <span class="task-text">${escapeHtml(alt.title)}</span>
+            </div>`;
+        });
+    }
+    el.innerHTML = html;
+}
+
+// ✨ ثبت feedback موفقیت ترکیب
+function markIdleSuccess(activity, itemsJsonStr) {
+    try {
+        const items = JSON.parse(itemsJsonStr.replace(/&#39;/g, "'"));
+        // جدا کردن activity اصلی از باقی موارد
+        const companions = items.slice(1); // اولی همون activity فعلیه
+
+        // پیدا کردن یا ساختن pairing
+        let pairing = db.pairings.find(p => p.mainActivity === activity);
+        if (!pairing) {
+            pairing = { id: generateId(), mainActivity: activity, companions: [], createdAt: new Date().toISOString() };
+            db.pairings.push(pairing);
         }
-    };
+        // اضافه کردن companion های جدید
+        companions.forEach(c => {
+            if (c && !pairing.companions.includes(c)) {
+                pairing.companions.push(c);
+            }
+        });
+        pairing.lastUsed = new Date().toISOString();
+        saveDB();
+        document.getElementById('idle-suggestions').innerHTML = `<div style="text-align:center; padding:15px; color:var(--green);">✅ یاد گرفتم! دفعه بعد هم پیشنهاد می‌دم.</div>`;
+        setTimeout(() => render(), 2000);
+    } catch (e) { console.error("Feedback error:", e); }
+}
 
-    recognition.start();
+function dismissIdle() {
+    document.getElementById('idle-suggestions').innerHTML = '';
+}
+
+// ============ اهداف با Chat ============
+async function addGoalAndStartChat() {
+    const title = document.getElementById('new-goal-title').value.trim();
+    const desc = document.getElementById('new-goal-desc').value.trim();
+    if (!title) return alert("عنوان هدف رو وارد کن.");
+    if (!db.settings.key) return alert("⚠️ ابتدا API Key رو وارد کن.");
+
+    const goalId = generateId();
+    db.goals.push({
+        id: goalId, title, description: desc,
+        status: 'in-discussion', // در حال گفتگو با AI
+        createdAt: new Date().toISOString(), progress: 0
+    });
+
+    // پیام اولیه به chat
+    db.pendingGoalChat = goalId;
+    document.getElementById('new-goal-title').value = "";
+    document.getElementById('new-goal-desc').value = "";
+    saveDB();
+
+    // یه پیام شروع به deep chat اضافه می‌کنیم
+    const introPrompt = `هدف بلندمدت جدید: "${title}"${desc ? ` - ${desc}` : ''}`;
+    db.chatHistory.deep.push({ role: 'user', text: `🎯 ${introPrompt}` });
+    saveDB();
+
+    showPage('home');
+
+    // AI شروع به گفتگو می‌کنه
+    addMessage('deep', 'ai', '⏳ در حال آماده‌سازی...');
+    const aiPrompt = `کاربر این هدف بلندمدت رو ثبت کرده: "${title}"${desc ? ` (${desc})` : ''}.
+
+تو سیکا هستی، مربی شخصی. کاربر ADHD داره. می‌خوای کمکش کنی این هدف رو به subtask های کوچیک، مشخص و عملی تبدیل کنی.
+
+به جای تجزیه فوری، اول این سوالات رو ازش بپرس (در یک پیام، گرم و دوستانه، فارسی):
+1. چه تجربه‌ی قبلی با این موضوع داری؟
+2. تا چه زمانی می‌خوای بهش برسی؟
+3. چقدر در هفته می‌تونی روش کار کنی؟
+4. ترسی یا چالشی هست که فکر می‌کنی پیش بیاد؟
+
+JSON:
+{
+  "reply": "پاسخ گرم با ۴ سوال",
+  "replyEnglish": "English version",
+  "summary": "شروع گفتگو درباره هدف X",
+  "mood": "متمرکز"
+}`;
+    try {
+        const parsed = await callGemini(aiPrompt);
+        db.chatHistory.deep.pop();
+        const reply = parsed.reply || `بیا درباره‌ی "${title}" بیشتر صحبت کنیم. چه تجربه‌ای داری؟`;
+        addMessage('deep', 'ai', reply);
+        speak(reply, parsed.replyEnglish || "");
+    } catch (e) {
+        db.chatHistory.deep.pop();
+        addMessage('deep', 'ai', `بیا درباره‌ی "${title}" بیشتر صحبت کنیم. چه تجربه‌ای با این موضوع داری؟ چقدر می‌خوای روش وقت بذاری؟`);
+    }
+}
+
+async function finalizeGoalBreakdown(goalId) {
+    const goal = db.goals.find(g => g.id === goalId);
+    if (!goal) return;
+
+    const recentChat = db.chatHistory.deep.slice(-10).map(m => `${m.role}: ${m.text}`).join('\n');
+
+    const prompt = `بر اساس گفتگوی زیر، هدف "${goal.title}" رو به subtask های مشخص تجزیه کن.
+
+گفتگو:
+${recentChat}
+
+برای هر subtask:
+- title (مشخص و عملی)
+- priority (high/medium/low)
+- context (home/outdoor/online/phone)
+- energyRequired (high/medium/low)
+- estimatedMinutes (5/15/30/60/120)
+- parallelizable (true اگه میشه همراه کار دیگه انجام داد)
+- order (ترتیب)
+
+JSON:
+{
+  "subtasks": [
+    { "title": "...", "priority": "...", "context": "...", "energyRequired": "...", "estimatedMinutes": 30, "parallelizable": false, "order": 1 }
+  ]
+}`;
+
+    try {
+        const data = await callGemini(prompt);
+        if (data?.subtasks) {
+            const sorted = [...data.subtasks].sort((a, b) => (a.order || 99) - (b.order || 99));
+            const newIds = [];
+            sorted.forEach((s, idx) => {
+                if (!s.title) return;
+                const taskId = generateId();
+                newIds.push(taskId);
+                db.tasks.push({
+                    id: taskId, title: s.title, type: 'subtask',
+                    goalId: goalId, priority: s.priority || 'medium',
+                    urgency: 'normal', context: [s.context || 'home'],
+                    dependsOn: idx > 0 ? [newIds[idx-1]] : [],
+                    deadline: null,
+                    energyRequired: s.energyRequired || 'medium',
+                    estimatedMinutes: s.estimatedMinutes || 30,
+                    parallelizable: s.parallelizable || false,
+                    interruptible: true,
+                    done: false, createdAt: new Date().toISOString(),
+                    source: 'goal-breakdown'
+                });
+            });
+            goal.status = 'active';
+            db.pendingGoalChat = null;
+            saveDB();
+            return sorted.length;
+        }
+    } catch (e) { console.error("Breakdown error:", e); }
+    return 0;
+}
+
+function deleteGoal(id) {
+    if (!confirm("این هدف و subtask هاش حذف بشن؟")) return;
+    db.tasks = db.tasks.filter(t => t.goalId !== id);
+    db.goals = db.goals.filter(g => g.id !== id);
+    saveDB();
+    render();
+}
+
+function calculateGoalProgress(goalId) {
+    const subs = db.tasks.filter(t => t.goalId === goalId);
+    if (subs.length === 0) return 0;
+    return Math.round((subs.filter(t => t.done).length / subs.length) * 100);
+}
+
+// ============ کارهای دستی ============
+function addManualTask() {
+    const input = document.getElementById('new-task-input');
+    const priority = document.getElementById('new-task-priority').value;
+    const context = document.getElementById('new-task-context').value;
+    const energy = document.getElementById('new-task-energy').value;
+    const time = parseInt(document.getElementById('new-task-time').value);
+    const deadline = document.getElementById('new-task-deadline').value;
+    const title = input.value.trim();
+    if (!title) return;
+    db.tasks.push({
+        id: generateId(), title, type: 'oneshot',
+        priority, urgency: deadline ? 'urgent' : 'normal',
+        context: [context], dependsOn: [],
+        deadline: deadline || null,
+        energyRequired: energy, estimatedMinutes: time,
+        parallelizable: energy === 'low', interruptible: true,
+        done: false, createdAt: new Date().toISOString(), source: 'manual'
+    });
+    input.value = "";
+    document.getElementById('new-task-deadline').value = "";
+    saveDB();
+    render();
+}
+
+function quickAddTask() {
+    const input = document.getElementById('quick-task-input');
+    const priority = document.getElementById('quick-task-priority').value;
+    const context = document.getElementById('quick-task-context').value;
+    const title = input.value.trim();
+    if (!title) return;
+    db.tasks.push({
+        id: generateId(), title, type: 'oneshot',
+        priority, urgency: 'normal',
+        context: [context], dependsOn: [],
+        deadline: null,
+        energyRequired: 'medium', estimatedMinutes: 15,
+        parallelizable: false, interruptible: true,
+        done: false, createdAt: new Date().toISOString(), source: 'quick-add'
+    });
+    input.value = "";
+    saveDB();
+    render();
+    if (db.todayPlan?.context?.includes(context)) {
+        const lastId = db.tasks[db.tasks.length - 1].id;
+        if (!db.todayPlan.suggestedTaskIds.includes(lastId)) {
+            db.todayPlan.suggestedTaskIds.push(lastId);
+            saveDB();
+            render();
+        }
+    }
+}
+
+function toggleTask(id) {
+    const task = db.tasks.find(t => t.id === id);
+    if (task) {
+        task.done = !task.done;
+        if (task.done) task.doneAt = new Date().toISOString();
+        else delete task.doneAt;
+        saveDB();
+        render();
+    }
+}
+
+function deleteTask(id) {
+    db.tasks = db.tasks.filter(t => t.id !== id);
+    if (db.todayPlan?.suggestedTaskIds) {
+        db.todayPlan.suggestedTaskIds = db.todayPlan.suggestedTaskIds.filter(t => t !== id);
+    }
+    saveDB();
+    render();
+}
+
+function deletePairing(id) {
+    if (!confirm("این جفت پاک شود؟")) return;
+    db.pairings = db.pairings.filter(p => p.id !== id);
+    saveDB();
+    render();
 }
 
 // ============ Gemini ============
-async function handleAI(type) {
-    const inputId = type === 'quick' ? 'status-input' : 'chat-input';
-    const userText = document.getElementById(inputId).value.trim();
-
-    if (!userText) return;
-    if (!db.settings.key) {
-        return addMessage(type, 'ai', "⚠️ ابتدا Gemini API Key را در تنظیمات وارد و ذخیره کنید.");
-    }
-
-    const timestamp = new Date().toLocaleTimeString('it-IT');
-    db.logs.push({ time: timestamp, text: userText });
-    if (db.logs.length > 30) db.logs = db.logs.slice(-30);
-
-    addMessage(type, 'user', `(${timestamp}) ${userText}`);
-    document.getElementById(inputId).value = "";
-    addMessage(type, 'ai', '⏳ در حال تحلیل...');
-
-    const models = [
-        'gemini-flash-latest',
-        'gemini-3.1-flash-lite',
-        'gemini-2.5-flash-lite',
-        'gemini-2.5-flash'
-    ];
-
-    const recentLogs = db.logs.slice(-5).map(l => `[${l.time}] ${l.text}`).join('\n');
-    const currentTasks = db.tasks.filter(t => !t.done).map(t => `- ${t.n}`).join('\n') || 'هیچ';
-
-    const systemPrompt = `تو یک مربی شخصی هوشمند به نام "سیکا" هستی. به زبان فارسی، گرم، صمیمی و کاربردی پاسخ بده.
-
-داده‌های کاربر:
-- نوع پیام: ${type === 'quick' ? 'گزارش سریع وضعیت' : 'مشورت عمیق'}
-- ۵ گزارش اخیر:
-${recentLogs}
-- کارهای فعال:
-${currentTasks}
-
-پیام فعلی کاربر: "${userText}"
-
-وظایف تو:
-1. یک پاسخ دوستانه و مفید فارسی بده (2-4 جمله، کامل و واضح)
-2. همون پاسخ رو به انگلیسی هم ترجمه کن (طبیعی و روان)
-3. اگر کاربر کاری رو ذکر کرد که باید انجام بده، اون رو به عنوان task استخراج کن
-4. وضعیت کلی روحی/شرایطی کاربر رو در یک کلمه ارزیابی کن
-
-❗ حتماً پاسخ رو فقط و فقط در قالب JSON معتبر زیر برگردون:
-
-{
-  "reply": "پاسخ فارسی",
-  "replyEnglish": "English translation",
-  "summary": "خلاصه وضعیت",
-  "mood": "یک کلمه",
-  "newTasks": [{ "title": "...", "priority": "high|medium|low" }]
-}`;
-
-    let lastError = "";
-    let success = false;
-
+async function callGemini(prompt) {
+    const models = ['gemini-flash-latest', 'gemini-3.1-flash-lite', 'gemini-2.5-flash-lite', 'gemini-2.5-flash'];
     for (const m of models) {
-        if (success) break;
         try {
             const response = await fetch(
                 `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`,
                 {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'x-goog-api-key': db.settings.key
-                    },
+                    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': db.settings.key },
                     body: JSON.stringify({
-                        contents: [{ role: "user", parts: [{ text: systemPrompt }] }],
-                        generationConfig: {
-                            temperature: 0.7,
-                            maxOutputTokens: 1024,
-                            responseMimeType: "application/json"
-                        }
+                        contents: [{ role: "user", parts: [{ text: prompt }] }],
+                        generationConfig: { temperature: 0.7, maxOutputTokens: 2048, responseMimeType: "application/json" }
                     })
                 }
             );
-
             const data = await response.json();
-
-            if (!response.ok) {
-                lastError = data?.error?.message || `HTTP ${response.status}`;
-                continue;
-            }
-
-            const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-            if (!rawText) {
-                lastError = "پاسخ خالی";
-                continue;
-            }
-
-            let parsed;
-            try {
-                parsed = JSON.parse(rawText.replace(/```json|```/g, '').trim());
-            } catch (parseErr) {
-                parsed = { reply: rawText, replyEnglish: "", summary: "", mood: "", newTasks: [] };
-            }
-
-            db.chatHistory[type].pop();
-
-            const reply = parsed.reply || "پاسخ دریافت شد.";
-            addMessage(type, 'ai', reply);
-            speak(reply, parsed.replyEnglish || "");
-
-            if (parsed.summary) db.lastSummary = parsed.summary;
-            if (parsed.mood) db.lastMood = parsed.mood;
-
-            if (Array.isArray(parsed.newTasks)) {
-                parsed.newTasks.forEach(t => {
-                    if (t && t.title) {
-                        db.tasks.push({
-                            id: generateId(),
-                            n: t.title,
-                            p: t.priority || 'medium',
-                            done: false,
-                            createdAt: new Date().toISOString()
-                        });
-                    }
-                });
-            }
-
-            saveDB();
-            render();
-            success = true;
-            return;
-
-        } catch (e) {
-            lastError = e.message;
-        }
+            if (!response.ok) continue;
+            const raw = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (!raw) continue;
+            return JSON.parse(raw.replace(/```json|```/g, '').trim());
+        } catch (e) { console.error(`${m} failed:`, e); }
     }
+    throw new Error("همه مدل‌ها fail شدن");
+}
 
-    if (!success) {
+// ============ میکروفون ============
+function toggleMic(inputId, type) {
+    const micBtn = document.getElementById('mic-' + type);
+    if (recognition && currentRecordingType === type) { recognition.stop(); return; }
+    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRec) return alert("⚠️ پشتیبانی نمی‌شود.");
+    recognition = new SpeechRec();
+    recognition.lang = 'fa-IR';
+    recognition.continuous = true;
+    currentRecordingType = type;
+    recognition.onstart = () => micBtn.classList.add('recording');
+    recognition.onresult = (e) => {
+        let t = "";
+        for (let i = 0; i < e.results.length; i++) t += e.results[i][0].transcript;
+        document.getElementById(inputId).value = t;
+    };
+    recognition.onerror = (e) => { micBtn.classList.remove('recording'); recognition = null; currentRecordingType = null; };
+    recognition.onend = () => {
+        micBtn.classList.remove('recording');
+        const wasType = currentRecordingType;
+        recognition = null; currentRecordingType = null;
+        if (wasType && document.getElementById(inputId).value.trim()) setTimeout(() => handleAI(wasType), 500);
+    };
+    recognition.start();
+}
+
+// ============ چت ============
+async function handleAI(type) {
+    const inputId = type === 'quick' ? 'status-input' : 'chat-input';
+    const userText = document.getElementById(inputId).value.trim();
+    if (!userText) return;
+    if (!db.settings.key) return addMessage(type, 'ai', "⚠️ ابتدا API Key.");
+
+    const timestamp = new Date().toLocaleTimeString('it-IT');
+    addMessage(type, 'user', `(${timestamp}) ${userText}`);
+    document.getElementById(inputId).value = "";
+    addMessage(type, 'ai', '⏳ در حال تحلیل...');
+
+    const recentMsgs = db.chatHistory[type].slice(-8).map(m => `${m.role}: ${m.text}`).join('\n');
+    const activeTasks = db.tasks.filter(t => !t.done).slice(0, 10).map(t => `- ${t.title}`).join('\n') || 'هیچ';
+    const knownPairings = db.pairings.slice(0, 10).map(p => `${p.mainActivity}: ${p.companions.join(', ')}`).join('\n') || 'هیچ';
+
+    // اگه گفتگوی هدف در جریانه
+    const goalContext = db.pendingGoalChat ? db.goals.find(g => g.id === db.pendingGoalChat) : null;
+    const goalNote = goalContext ?
+        `\n\n⚠️ توجه: کاربر در حال گفتگو درباره هدف "${goalContext.title}" است. اگر کاربر گفت "بریم تجزیه کنیم" یا اطلاعات کافی داده، در reply پیشنهاد بده که حالا تجزیه کنیم و در فیلد "readyToBreakdown" مقدار true بزن.` : '';
+
+    const systemPrompt = `تو سیکا، مربی شخصی هستی. کاربر ADHD داره، پس:
+- پاسخ‌ها کوتاه و عملی
+- کارهای سبک رو با کارهای سنگین تفکیک کن
+- اگه گفت "موقع X خوب بود Y رو کنارش انجام دادم"، در فیلد newPairing ذخیره کن
+- اگه گفت کاری انجام بده، در newTasks استخراج کن
+
+نوع: ${type === 'quick' ? 'گزارش سریع' : 'مشورت عمیق'}
+کارهای فعال:
+${activeTasks}
+
+جفت‌های یادگرفته‌شده:
+${knownPairings}
+
+تاریخچه چت:
+${recentMsgs}${goalNote}
+
+پیام: "${userText}"
+
+❗ JSON:
+{
+  "reply": "پاسخ فارسی گرم و کوتاه (2-4 جمله)",
+  "replyEnglish": "English",
+  "summary": "خلاصه وضعیت",
+  "mood": "یک کلمه",
+  "newTasks": [{ "title": "...", "priority": "...", "context": "...", "energyRequired": "low|medium|high", "estimatedMinutes": 5|15|30|60, "parallelizable": false }],
+  "newPairing": { "mainActivity": "آشپزی", "companion": "ایمیل جواب دادن" } یا null,
+  "readyToBreakdown": false
+}`;
+
+    try {
+        const parsed = await callGemini(systemPrompt);
         db.chatHistory[type].pop();
-        addMessage(type, 'ai', `⚠️ خطا: ${lastError}`);
+        const reply = parsed.reply || "پاسخ دریافت شد.";
+        addMessage(type, 'ai', reply);
+        speak(reply, parsed.replyEnglish || "");
+        if (parsed.summary) db.lastSummary = parsed.summary;
+        if (parsed.mood) db.lastMood = parsed.mood;
+
+        // newTasks
+        if (Array.isArray(parsed.newTasks)) {
+            parsed.newTasks.forEach(t => {
+                if (t?.title) {
+                    db.tasks.push({
+                        id: generateId(), title: t.title, type: 'oneshot',
+                        priority: t.priority || 'medium', urgency: 'normal',
+                        context: [t.context || 'home'], dependsOn: [],
+                        deadline: null,
+                        energyRequired: t.energyRequired || 'medium',
+                        estimatedMinutes: t.estimatedMinutes || 15,
+                        parallelizable: t.parallelizable || false,
+                        interruptible: true,
+                        done: false, createdAt: new Date().toISOString(), source: 'chat'
+                    });
+                }
+            });
+        }
+
+        // ✨ newPairing - یادگیری از تجربه
+        if (parsed.newPairing?.mainActivity && parsed.newPairing?.companion) {
+            const main = parsed.newPairing.mainActivity;
+            const comp = parsed.newPairing.companion;
+            let pairing = db.pairings.find(p => p.mainActivity === main);
+            if (!pairing) {
+                pairing = { id: generateId(), mainActivity: main, companions: [], createdAt: new Date().toISOString() };
+                db.pairings.push(pairing);
+            }
+            if (!pairing.companions.includes(comp)) {
+                pairing.companions.push(comp);
+                pairing.lastUsed = new Date().toISOString();
+            }
+        }
+
+        // اگه آماده‌ی تجزیه‌ی هدفه
+        if (parsed.readyToBreakdown && db.pendingGoalChat) {
+            const count = await finalizeGoalBreakdown(db.pendingGoalChat);
+            if (count > 0) {
+                addMessage(type, 'ai', `✅ ${count} زیرکار ساخته شد. می‌تونی توی صفحه‌ی "کارها" ببینی.`);
+            }
+        }
+
+        saveDB();
+        render();
+    } catch (e) {
+        db.chatHistory[type].pop();
+        addMessage(type, 'ai', `⚠️ خطا: ${e.message}`);
     }
 }
 
@@ -687,148 +1435,88 @@ function addMessage(type, role, text) {
     render();
 }
 
-function speak(persianText, englishText) {
-    try {
-        if (!('speechSynthesis' in window)) return;
-        const mode = db.settings.voiceMode || "auto";
-        if (mode === "off") return;
-
-        if (availableVoices.length === 0) loadVoices();
-        if (availableVoices.length === 0) return;
-
-        window.speechSynthesis.cancel();
-
-        let textToSpeak = "", voiceToUse = null, langToUse = "";
-
-        if (mode === "fa") {
-            if (!persianVoice) return;
-            textToSpeak = persianText; voiceToUse = persianVoice; langToUse = "fa-IR";
-        } else if (mode === "en") {
-            if (!englishVoice) return;
-            textToSpeak = englishText || persianText; voiceToUse = englishVoice; langToUse = "en-US";
-        } else {
-            if (persianVoice) {
-                textToSpeak = persianText; voiceToUse = persianVoice; langToUse = "fa-IR";
-            } else if (englishVoice && englishText) {
-                textToSpeak = englishText; voiceToUse = englishVoice; langToUse = "en-US";
-            } else return;
-        }
-
-        if (!textToSpeak) return;
-
-        const utterance = new SpeechSynthesisUtterance(textToSpeak);
-        utterance.lang = langToUse;
-        if (voiceToUse) utterance.voice = voiceToUse;
-        utterance.rate = 1.0;
-        utterance.pitch = 1.0;
-        utterance.volume = 1.0;
-        utterance.onerror = (e) => console.error("TTS error:", e);
-
-        setTimeout(() => window.speechSynthesis.speak(utterance), 100);
-
-    } catch (e) {
-        console.error("Speak error:", e);
-    }
-}
-
-// ============ Tasks ============
-function toggleTask(id) {
-    const task = db.tasks.find(t => t.id === id);
-    if (task) {
-        task.done = !task.done;
-        if (task.done) task.completedAt = new Date().toISOString();
-        saveDB();
-        render();
-    }
-}
-
-function deleteTask(id) {
-    db.tasks = db.tasks.filter(t => t.id !== id);
-    saveDB();
-    render();
-}
-
-function clearCompletedTasks() {
-    const count = db.tasks.filter(t => t.done).length;
-    if (count === 0) return alert("کار انجام‌شده‌ای وجود ندارد.");
-    if (confirm(`${count} کار انجام‌شده پاک شود؟`)) {
-        db.tasks = db.tasks.filter(t => !t.done);
-        saveDB();
-        render();
-    }
-}
-
-function addManualTask() {
-    const input = document.getElementById('new-task-input');
-    const priority = document.getElementById('new-task-priority').value;
-    const title = input.value.trim();
-    if (!title) return;
-    db.tasks.push({
-        id: generateId(),
-        n: title, p: priority,
-        done: false,
-        createdAt: new Date().toISOString()
-    });
-    input.value = "";
-    saveDB();
-    render();
-}
-
 // ============ Render ============
-function renderTaskItem(t, showDelete = true) {
-    const priorityClass = `priority-${t.p || 'medium'}`;
-    const priorityLabel = { high: 'بالا', medium: 'متوسط', low: 'پایین' }[t.p] || 'متوسط';
+function renderTaskItem(t, opts = {}) {
+    const { showDelete = true, showCheckbox = true, compact = false } = opts;
+    const priorityLabel = { high: 'فوری', medium: 'متوسط', low: 'کم' }[t.priority] || 'متوسط';
+    const ctxLabels = { home: '🏠', outdoor: '🌆', online: '💻', phone: '📞' };
+    const energyLabels = { high: '🔥', medium: '🌊', low: '💨' };
+
+    const ctxTags = (t.context || []).map(c => `<span class="task-tag ctx-${c}">${ctxLabels[c] || c}</span>`).join('');
+    const energyTag = t.energyRequired ? `<span class="task-tag energy-${t.energyRequired}">${energyLabels[t.energyRequired]}</span>` : '';
+    const timeTag = t.estimatedMinutes ? `<span class="task-tag time-tag">⏱${t.estimatedMinutes}د</span>` : '';
+    const parallelTag = t.parallelizable ? `<span class="task-tag parallel-tag">🔗 موازی</span>` : '';
+
+    const goalName = t.goalId ? db.goals.find(g => g.id === t.goalId)?.title : null;
+    const goalTag = goalName ? `<span class="task-tag type-goal">🎯 ${escapeHtml(goalName)}</span>` : '';
+
+    const completedIds = new Set(db.tasks.filter(x => x.done).map(x => x.id));
+    const blocked = (t.dependsOn || []).some(id => !completedIds.has(id));
+    const blockedTag = blocked ? `<span class="task-tag blocked-tag">🔒 منتظر پیش‌نیاز</span>` : '';
+
+    const deadlineTag = t.deadline ? `<span class="task-tag deadline-tag">📅 ${t.deadline}</span>` : '';
+
     return `
-        <div class="task-item ${t.done ? 'done' : ''}">
-            <div class="task-checkbox ${t.done ? 'checked' : ''}" onclick="toggleTask('${t.id}')">
-                ${t.done ? '✓' : ''}
-            </div>
-            <div class="task-text">${escapeHtml(t.n)}</div>
-            <span class="task-priority ${priorityClass}">${priorityLabel}</span>
+        <div class="task-item ${t.done ? 'done' : ''} ${blocked && !t.done ? 'blocked' : ''}">
+            ${showCheckbox ? `<div class="task-checkbox ${t.done ? 'checked' : ''}" onclick="toggleTask('${t.id}')">${t.done ? '✓' : ''}</div>` : ''}
+            <div class="task-text">${escapeHtml(t.title)}</div>
+            <span class="task-tag priority-${t.priority || 'medium'}">${priorityLabel}</span>
+            ${ctxTags}
+            ${!compact ? energyTag : ''}
+            ${!compact ? timeTag : ''}
+            ${!compact ? parallelTag : ''}
+            ${!compact ? deadlineTag : ''}
+            ${!compact ? goalTag : ''}
+            ${blockedTag}
             ${showDelete ? `<button class="task-delete" onclick="deleteTask('${t.id}')">✕</button>` : ''}
         </div>
     `;
 }
 
 function render() {
+    // چت‌ها
     ['quick', 'deep'].forEach(type => {
         const log = document.getElementById(type + '-chat-log');
         if (log) {
             log.innerHTML = db.chatHistory[type]
-                .map(m => `<div class="msg ${m.role === 'user' ? 'user' : 'ai'}">${escapeHtml(m.text)}</div>`)
-                .join('');
-            // اسکرول خودکار به آخرین پیام
-            requestAnimationFrame(() => {
-                log.scrollTop = log.scrollHeight;
-            });
+                .map(m => `<div class="msg ${m.role === 'user' ? 'user' : 'ai'}">${escapeHtml(m.text)}</div>`).join('');
+            requestAnimationFrame(() => log.scrollTop = log.scrollHeight);
         }
     });
 
     const summaryEl = document.getElementById('strategic-summary');
     if (summaryEl) summaryEl.innerText = db.lastSummary || "منتظر گزارش شما هستم...";
     const moodEl = document.getElementById('mood-indicator');
-    if (moodEl) moodEl.innerText = db.lastMood ? `🎭 حال و احوال: ${db.lastMood}` : "";
+    if (moodEl) moodEl.innerText = db.lastMood ? `🎭 حال: ${db.lastMood}` : "";
 
+    showNightlyBanner();
+
+    const ctxEl = document.getElementById('today-context-info');
+    if (ctxEl && db.todayPlan?.date === todayStr() && db.todayPlan.context?.length > 0) {
+        const ctxLabels = { home: '🏠 خونه', outdoor: '🌆 بیرون', online: '💻 آنلاین', phone: '📞 تلفن' };
+        const labels = db.todayPlan.context.map(c => ctxLabels[c]).join('، ');
+        ctxEl.innerHTML = `📍 ${labels} | ⏰ ${db.todayPlan.availableHours} ساعت`;
+    } else if (ctxEl) {
+        ctxEl.innerHTML = '';
+    }
+
+    // پیشنهادی‌های امروز
     const homeTasks = document.getElementById('home-task-list');
     if (homeTasks) {
-        const activeTasks = db.tasks.filter(t => !t.done);
-        const completedToday = db.tasks.filter(t => {
-            if (!t.done || !t.completedAt) return false;
-            return new Date(t.completedAt).toDateString() === new Date().toDateString();
-        });
-        const visibleTasks = [...activeTasks, ...completedToday];
-
-        if (visibleTasks.length === 0) {
-            homeTasks.innerHTML = `<div class="empty-state">هنوز کاری ثبت نشده.<br>یه گزارش بدید تا سیکا براتون پیشنهاد بده.</div>`;
+        let suggestedTasks = [];
+        if (db.todayPlan?.suggestedTaskIds?.length > 0 && db.todayPlan.date === todayStr()) {
+            suggestedTasks = db.todayPlan.suggestedTaskIds.map(id => db.tasks.find(t => t.id === id)).filter(Boolean);
         } else {
             const priorityOrder = { high: 0, medium: 1, low: 2 };
-            visibleTasks.sort((a, b) => {
-                if (a.done !== b.done) return a.done ? 1 : -1;
-                return (priorityOrder[a.p] || 1) - (priorityOrder[b.p] || 1);
-            });
-            homeTasks.innerHTML = visibleTasks.map(t => renderTaskItem(t, false)).join('');
+            suggestedTasks = db.tasks.filter(t => !t.done)
+                .sort((a, b) => (priorityOrder[a.priority] || 1) - (priorityOrder[b.priority] || 1))
+                .slice(0, 5);
         }
-
+        if (suggestedTasks.length === 0) {
+            homeTasks.innerHTML = `<div class="empty-state">هنوز کاری ثبت نشده.<br>برنامه‌ریزی فردا رو انجام بده 👇</div>`;
+        } else {
+            homeTasks.innerHTML = suggestedTasks.map(t => renderTaskItem(t, { showDelete: false })).join('');
+        }
         const statsEl = document.getElementById('task-stats');
         if (statsEl) {
             const total = db.tasks.length;
@@ -836,28 +1524,87 @@ function render() {
             statsEl.innerHTML = `
                 <div><span class="stat-num">${total - done}</span><br>فعال</div>
                 <div><span class="stat-num" style="color:var(--green)">${done}</span><br>انجام‌شده</div>
-                <div><span class="stat-num">${total}</span><br>کل</div>
+                <div><span class="stat-num">${db.goals.length}</span><br>اهداف</div>
             `;
         }
     }
 
+    // اهداف
+    const goalsList = document.getElementById('goals-list');
+    if (goalsList) {
+        if (db.goals.length === 0) {
+            goalsList.innerHTML = `<div class="card"><div class="empty-state">هنوز هدفی ثبت نشده.</div></div>`;
+        } else {
+            goalsList.innerHTML = db.goals.map(g => {
+                const progress = calculateGoalProgress(g.id);
+                const subs = db.tasks.filter(t => t.goalId === g.id);
+                const statusIcon = g.status === 'in-discussion' ? '💬' : '🎯';
+                const statusText = g.status === 'in-discussion' ? 'در حال گفتگو با AI' : `${subs.filter(s=>s.done).length}/${subs.length} زیرکار | ${progress}%`;
+                return `
+                    <div class="card">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <b>${statusIcon} ${escapeHtml(g.title)}</b>
+                            <button class="task-delete" onclick="deleteGoal('${g.id}')">✕</button>
+                        </div>
+                        ${g.description ? `<div style="font-size:0.75rem; color:var(--muted); margin-top:5px;">${escapeHtml(g.description)}</div>` : ''}
+                        <div style="font-size:0.75rem; color:var(--muted); margin-top:8px;">${statusText}</div>
+                        ${subs.length > 0 ? `<div class="progress-bar"><div class="progress-fill" style="width:${progress}%;"></div></div>` : ''}
+                        ${subs.length > 0 ? `<div style="margin-top:10px; font-size:0.7rem; color:var(--muted);">زیرکارها:</div><div style="margin-top:5px;">${subs.map(t => renderTaskItem(t, { showDelete: true, compact: true })).join('')}</div>` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+    }
+
+    // همه کارها با فیلتر
     const lt = document.getElementById('lt-list-detailed');
     if (lt) {
-        if (db.tasks.length === 0) {
-            lt.innerHTML = `<div class="card"><div class="empty-state">هنوز کاری ثبت نشده.</div></div>`;
+        const filterStatus = document.getElementById('filter-status')?.value || 'active';
+        const filterContext = document.getElementById('filter-context')?.value || 'all';
+        const filterEnergy = document.getElementById('filter-energy')?.value || 'all';
+        let filtered = [...db.tasks];
+        if (filterStatus === 'active') filtered = filtered.filter(t => !t.done);
+        else if (filterStatus === 'done') filtered = filtered.filter(t => t.done);
+        if (filterContext !== 'all') filtered = filtered.filter(t => t.context?.includes(filterContext));
+        if (filterEnergy !== 'all') filtered = filtered.filter(t => t.energyRequired === filterEnergy);
+
+        if (filtered.length === 0) {
+            lt.innerHTML = `<div class="card"><div class="empty-state">کاری با این فیلتر پیدا نشد.</div></div>`;
         } else {
-            const sorted = [...db.tasks].sort((a, b) => {
+            const sorted = filtered.sort((a, b) => {
                 if (a.done !== b.done) return a.done ? 1 : -1;
-                return new Date(b.createdAt) - new Date(a.createdAt);
+                const priorityOrder = { high: 0, medium: 1, low: 2 };
+                return (priorityOrder[a.priority] || 1) - (priorityOrder[b.priority] || 1);
             });
-            lt.innerHTML = `<div class="card">${sorted.map(t => renderTaskItem(t, true)).join('')}</div>`;
+            lt.innerHTML = `<div class="card">${sorted.map(t => renderTaskItem(t, { showDelete: true })).join('')}</div>`;
+        }
+    }
+
+    // ✨ تب جفت‌ها
+    const pairingsList = document.getElementById('pairings-list');
+    if (pairingsList) {
+        if (db.pairings.length === 0) {
+            pairingsList.innerHTML = `<div class="empty-state">هنوز جفتی یاد نگرفتم.<br>وقتی موقع کاری، کار دیگه‌ای کنارش انجام دادی، توی چت بگو.</div>`;
+        } else {
+            pairingsList.innerHTML = db.pairings.map(p => `
+                <div style="background:#000; border:1px solid var(--orange); border-radius:12px; padding:12px; margin-bottom:8px;">
+                    <div style="display:flex; justify-content:space-between; align-items:start;">
+                        <div style="flex:1;">
+                            <div style="font-weight:bold; color:var(--orange); margin-bottom:6px;">📍 موقع: ${escapeHtml(p.mainActivity)}</div>
+                            <div style="font-size:0.8rem; color:var(--muted);">می‌تونم انجام بدم:</div>
+                            <div style="margin-top:5px;">${p.companions.map(c => `<span class="task-tag parallel-tag" style="margin-right:4px; margin-bottom:4px; display:inline-block;">${escapeHtml(c)}</span>`).join('')}</div>
+                        </div>
+                        <button class="task-delete" onclick="deletePairing('${p.id}')">✕</button>
+                    </div>
+                </div>
+            `).join('');
         }
     }
 }
 
 function clearAll() {
-    if (confirm("⚠️ تمام داده‌ها پاک شوند؟")) {
-        localStorage.clear();
+    if (confirm("⚠️ همه داده‌ها پاک شوند؟")) {
+        localStorage.removeItem('syca_db_v19');
         location.reload();
     }
 }
@@ -868,6 +1615,8 @@ window.onload = () => {
     if (db.settings.key) loadSettings();
     setTimeout(loadVoices, 500);
     setTimeout(loadVoices, 1500);
+    scheduleNightlyReview();
+    setTimeout(showNightlyBanner, 1000);
 };
 </script>
 </body>
