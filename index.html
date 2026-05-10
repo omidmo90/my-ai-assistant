@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Syca v6.2 | Fix Connection</title>
+    <title>Syca v6.5 | Stable Strategic Edition</title>
     <style>
         :root { --primary: #8b5cf6; --bg: #0a0a0c; --card: #16161e; --text: #f4f4f5; --blue: #3b82f6; --red: #ef4444; }
         body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
@@ -13,7 +13,8 @@
         .content { flex: 1; overflow-y: auto; padding: 15px; padding-bottom: 100px; }
         .page { display: none; } .page.active { display: block; }
         .card { background: var(--card); border-radius: 20px; padding: 15px; margin-bottom: 15px; border: 1px solid #27272a; }
-        input, textarea, select { width: 100%; background: #000; border: 1px solid #27272a; padding: 12px; border-radius: 12px; color: white; box-sizing: border-box; margin-bottom: 10px; font-family: inherit; }
+        label { display: block; font-size: 0.75rem; color: var(--primary); margin-bottom: 5px; font-weight: bold; }
+        input, textarea, select { width: 100%; background: #000; border: 1px solid #27272a; padding: 12px; border-radius: 12px; color: white; box-sizing: border-box; margin-bottom: 12px; font-family: inherit; font-size: 0.9rem; }
         .btn-icon { background: #27272a; border: none; padding: 12px; border-radius: 12px; color: white; font-size: 1.2rem; cursor: pointer; }
         .btn-icon.recording { background: var(--red); animation: pulse 1s infinite; }
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
@@ -21,50 +22,66 @@
         .msg { max-width: 85%; padding: 10px; border-radius: 15px; font-size: 0.85rem; line-height: 1.5; }
         .user { align-self: flex-start; background: #27272a; border-right: 4px solid var(--blue); }
         .ai { align-self: flex-end; background: rgba(139, 92, 246, 0.1); border-left: 4px solid var(--primary); text-align: right; }
-        label { display: block; font-size: 0.75rem; color: var(--primary); margin-bottom: 5px; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="content">
     <div id="page-home" class="page active">
-        <h1 style="text-align:center; font-size: 1.1rem;">SYCA CENTER</h1>
-
+        <h1 style="text-align:center; font-size: 1.1rem; letter-spacing: 1px;">SYCA CENTER</h1>
+        
         <div class="card" style="border-color: var(--blue);">
-            <label style="color:var(--blue)">🚀 گزارش سریع</label>
+            <label style="color:var(--blue)">🚀 گزارش سریع موقعیت</label>
             <div style="display: flex; gap: 8px;">
                 <input type="text" id="status-input" placeholder="کجایی؟">
                 <button id="mic-quick" class="btn-icon" onclick="toggleMic('status-input', 'quick')">🎤</button>
-                <button onclick="handleAI('quick')" style="background:var(--blue); border:none; padding:10px; border-radius:12px; color:white;">ثبت</button>
+                <button onclick="handleAI('quick')" style="background:var(--blue); border:none; padding:10px; border-radius:12px; color:white; cursor:pointer;">ثبت</button>
             </div>
             <div id="quick-chat-log" class="chat-container"></div>
         </div>
 
         <div class="card" style="margin-top: 20px;">
-            <label>🧠 میز مشورت</label>
+            <label>🧠 میز مشورت استراتژیک</label>
             <div style="display: flex; gap: 8px;">
-                <textarea id="chat-input" rows="1" placeholder="گفتگو..."></textarea>
+                <textarea id="chat-input" rows="1" placeholder="گفتگو با سایکا..."></textarea>
                 <button id="mic-deep" class="btn-icon" onclick="toggleMic('chat-input', 'deep')">🎤</button>
-                <button onclick="handleAI('deep')" style="background:var(--primary); border:none; padding:10px; border-radius:12px; color:white;">ارسال</button>
+                <button onclick="handleAI('deep')" style="background:var(--primary); border:none; padding:10px; border-radius:12px; color:white; cursor:pointer;">ارسال</button>
             </div>
             <div id="deep-chat-log" class="chat-container"></div>
         </div>
     </div>
 
     <div id="page-strategy" class="page">
-        <h1 style="text-align:center;">استراتژی</h1>
+        <h1 style="text-align:center;">اهداف و شانس موفقیت</h1>
         <div id="lt-list-detailed"></div>
     </div>
 
     <div id="page-settings" class="page">
-        <h1 style="text-align:center;">تنظیمات</h1>
+        <h1 style="text-align:center;">تنظیمات و زمان‌بندی</h1>
         <div class="card">
             <label>Gemini API Key</label>
-            <input type="password" id="api-key-input" placeholder="کلید را اینجا وارد کنید">
-            <label>🌙 ساعت مرور</label>
+            <input type="password" id="api-key-input" placeholder="کلید هوش مصنوعی را وارد کنید">
+            
+            <label>⏰ بازه بررسی وضعیت (ساعت)</label>
+            <select id="interval-check">
+                <option value="1">هر ۱ ساعت</option>
+                <option value="2">هر ۲ ساعت</option>
+                <option value="4">هر ۴ ساعت</option>
+            </select>
+
+            <label>📊 بازه فیدبک عملکرد (ساعت)</label>
+            <select id="interval-feedback">
+                <option value="2">هر ۲ ساعت</option>
+                <option value="4">هر ۴ ساعت</option>
+                <option value="8">هر ۸ ساعت</option>
+            </select>
+
+            <label>🌙 ساعت مرور شبانه</label>
             <input type="time" id="nightly-review-time" value="23:30">
-            <button onclick="saveSettings()" style="width:100%; background:var(--primary); color:white; padding:15px; border-radius:12px; border:none; font-weight:bold;">ذخیره تنظیمات</button>
-            <button onclick="clearAll()" style="color:var(--red); background:none; border:none; width:100%; margin-top:20px;">🗑️ پاکسازی کامل داده‌ها</button>
+
+            <button onclick="saveSettings()" style="width:100%; background:var(--primary); color:white; padding:15px; border-radius:12px; border:none; font-weight:bold; cursor:pointer;">💾 ذخیره تغییرات</button>
+            
+            <button onclick="clearAll()" style="color:var(--red); background:none; border:none; width:100%; margin-top:25px; cursor:pointer; font-size:0.8rem;">🗑️ پاکسازی کل داده‌ها و ریست</button>
         </div>
     </div>
 </div>
@@ -76,10 +93,10 @@
 </nav>
 
 <script>
-    // سیستم مدیریت حافظه
+    // سیستم دیتابیس پایدار
     let db = JSON.parse(localStorage.getItem('syca_db')) || { 
-        tasks: [], daily: [], logs: [], chatHistory: { quick: [], deep: [] }, 
-        settings: { key: "", nightTime: "23:30" } 
+        tasks: [], logs: [], chatHistory: { quick: [], deep: [] }, 
+        settings: { key: "", checkInt: "2", feedInt: "4", nightTime: "23:30" } 
     };
 
     let recognition = null;
@@ -90,85 +107,84 @@
         document.querySelectorAll('nav div').forEach(el => el.classList.remove('active'));
         document.getElementById('page-' + p).classList.add('active');
         document.getElementById('nav-' + p).classList.add('active');
-        if(p === 'settings') document.getElementById('api-key-input').value = db.settings.key || "";
+        if(p === 'settings') loadSettingsToUI();
         render();
     }
 
-    // سیستم ضبط دستی (Toggle)
+    function loadSettingsToUI() {
+        document.getElementById('api-key-input').value = db.settings.key || "";
+        document.getElementById('interval-check').value = db.settings.checkInt || "2";
+        document.getElementById('interval-feedback').value = db.settings.feedInt || "4";
+        document.getElementById('nightly-review-time').value = db.settings.nightTime || "23:30";
+    }
+
+    function saveSettings() {
+        db.settings.key = document.getElementById('api-key-input').value.trim();
+        db.settings.checkInt = document.getElementById('interval-check').value;
+        db.settings.feedInt = document.getElementById('interval-feedback').value;
+        db.settings.nightTime = document.getElementById('nightly-review-time').value;
+        localStorage.setItem('syca_db', JSON.stringify(db));
+        alert("تنظیمات با موفقیت ذخیره شد.");
+    }
+
+    // میکروفون با کنترل دستی
     function toggleMic(inputId, type) {
         const micBtn = type === 'quick' ? document.getElementById('mic-quick') : document.getElementById('mic-deep');
-        
         if (recognition && currentRecordingType === type) {
             recognition.stop();
             recognition = null;
             currentRecordingType = null;
             micBtn.classList.remove('recording');
-            setTimeout(() => handleAI(type), 500); 
+            setTimeout(() => handleAI(type), 400);
             return;
         }
-
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!SpeechRecognition) return alert("مرورگر شما از قابلیت ضبط صدا پشتیبانی نمی‌کند.");
-
-        recognition = new SpeechRecognition();
+        const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRec) return alert("خطا: مرورگر شما اجازه ضبط صدا نمی‌دهد.");
+        recognition = new SpeechRec();
         recognition.lang = 'fa-IR';
         recognition.continuous = true;
         currentRecordingType = type;
-
         recognition.onstart = () => micBtn.classList.add('recording');
-        recognition.onresult = (event) => {
-            let text = "";
-            for (let i = 0; i < event.results.length; i++) { text += event.results[i][0].transcript; }
-            document.getElementById(inputId).value = text;
+        recognition.onresult = (e) => {
+            let t = "";
+            for (let i = 0; i < e.results.length; i++) t += e.results[i][0].transcript;
+            document.getElementById(inputId).value = t;
         };
-        
-        recognition.onerror = (event) => {
-            console.error("Mic Error:", event.error);
-            micBtn.classList.remove('recording');
-        };
-        
         recognition.start();
     }
 
-    // موتور هوش مصنوعی با سیستم خطایابی دقیق
+    // موتور هوش مصنوعی با رفع خطای ارتباط
     async function handleAI(type) {
         const inputId = type === 'quick' ? 'status-input' : 'chat-input';
         const userText = document.getElementById(inputId).value.trim();
-        
         if(!userText) return;
-        if(!db.settings.key) return alert("لطفاً ابتدا API Key را در بخش تنظیمات (⚙️) وارد و ذخیره کنید.");
+        if(!db.settings.key) return alert("ابتدا کلید API را در تنظیمات وارد کنید.");
 
         const timestamp = new Date().toLocaleTimeString('fa-IR');
         db.logs.push({ time: timestamp, text: userText });
         addMessage(type, 'user', `(${timestamp}) ${userText}`);
         document.getElementById(inputId).value = "";
 
+        const prompt = `User Context: ${userText}. Entire Day Logs: ${JSON.stringify(db.logs)}. Strategic Goals: ${JSON.stringify(db.tasks)}. 
+        Instruction: Respond as an elite coach in Persian. Be very brief and insightful. If this is a status report, track the time for nightly review.`;
+
         try {
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${db.settings.key}`, {
+            const apiURL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${db.settings.key}`;
+            const response = await fetch(apiURL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [{ parts: [{ text: `User status/question: ${userText}. History: ${JSON.stringify(db.logs)}. Goals: ${JSON.stringify(db.tasks)}. Respond as a coach in Persian (short).` }] }]
-                })
+                body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
             });
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error.message || "Unknown API Error");
-            }
-
             const data = await response.json();
-            if (data.candidates && data.candidates[0].content) {
-                const aiText = data.candidates[0].content.parts[0].text.trim();
-                addMessage(type, 'ai', aiText);
-                speak(aiText);
-            } else {
-                throw new Error("پاسخی از مدل دریافت نشد.");
-            }
+            if (data.error) throw new Error(data.error.message);
 
-        } catch (error) {
-            console.error("AI Error:", error);
-            addMessage(type, 'ai', "خطا: " + (error.message.includes("API key") ? "کلید API معتبر نیست" : "ارتباط با سرور قطع شد"));
+            const aiResponse = data.candidates[0].content.parts[0].text.trim();
+            addMessage(type, 'ai', aiResponse);
+            speak(aiResponse);
+        } catch (err) {
+            console.error(err);
+            addMessage(type, 'ai', "⚠️ خطا در ارتباط! فیلترشکن خود را چک کنید.");
         }
     }
 
@@ -188,28 +204,16 @@
 
     function render() {
         ['quick', 'deep'].forEach(type => {
-            const logDiv = document.getElementById(type + '-chat-log');
-            if(logDiv) {
-                logDiv.innerHTML = db.chatHistory[type].map(m => `
-                    <div class="msg ${m.role === 'user' ? 'user' : 'ai'}">${m.text}</div>
-                `).join('');
-                logDiv.scrollTop = logDiv.scrollHeight;
-            }
+            const log = document.getElementById(type + '-chat-log');
+            if(log) log.innerHTML = db.chatHistory[type].map(m => `<div class="msg ${m.role === 'user' ? 'user' : 'ai'}">${m.text}</div>`).join('');
+            log.scrollTop = log.scrollHeight;
         });
-        const ltList = document.getElementById('lt-list-detailed');
-        if(ltList) ltList.innerHTML = db.tasks.map(t => `<div class="card"><b>${t.n}</b> (${t.p}%)</div>`).join('');
+        const lt = document.getElementById('lt-list-detailed');
+        if(lt) lt.innerHTML = db.tasks.map(t => `<div class="card"><b>${t.n}</b> (${t.p}%)</div>`).join('');
     }
 
-    function saveSettings() {
-        const keyVal = document.getElementById('api-key-input').value.trim();
-        db.settings.key = keyVal;
-        db.settings.nightTime = document.getElementById('nightly-review-time').value;
-        localStorage.setItem('syca_db', JSON.stringify(db));
-        alert("تنظیمات با موفقیت در S25 ذخیره شد.");
-    }
-
-    function clearAll() { if(confirm("تمام داده‌ها پاک شوند؟")) { localStorage.clear(); location.reload(); } }
-    window.onload = () => render();
+    function clearAll() { if(confirm("تمام داده‌ها و تنظیمات پاک شوند؟")) { localStorage.clear(); location.reload(); } }
+    window.onload = () => { render(); if(db.settings.key) loadSettingsToUI(); };
 </script>
 </body>
 </html>
