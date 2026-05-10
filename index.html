@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Syca v14 | Intelligent Coach</title>
+    <title>Syca v15 | Voice-Enabled Coach</title>
     <style>
         :root {
             --primary: #8b5cf6; --bg: #0a0a0c; --card: #16161e; --text: #f4f4f5;
@@ -128,6 +128,11 @@
             font-size: 0.75rem; color: var(--muted); margin-top: 10px;
         }
         .stat-num { color: var(--text); font-weight: bold; font-size: 1rem; }
+        .voice-status {
+            font-size: 0.7rem; color: var(--muted);
+            margin-top: 5px; padding: 4px 8px;
+            background: #000; border-radius: 8px; display: inline-block;
+        }
     </style>
 </head>
 <body>
@@ -197,7 +202,17 @@
         <div class="card">
             <label>🔑 Gemini API Key</label>
             <input type="password" id="api-key-input" placeholder="AIzaSy...">
-            <label>⏰ بازه بررسی (ساعت)</label>
+
+            <label>🔊 زبان پاسخ صوتی</label>
+            <select id="voice-mode">
+                <option value="auto">خودکار (فارسی اگر موجود، وگرنه انگلیسی)</option>
+                <option value="fa">فقط فارسی</option>
+                <option value="en">فقط انگلیسی</option>
+                <option value="off">خاموش</option>
+            </select>
+            <div id="voice-availability" class="voice-status"></div>
+
+            <label style="margin-top:15px;">⏰ بازه بررسی (ساعت)</label>
             <select id="interval-check">
                 <option value="1">هر ۱ ساعت</option>
                 <option value="2" selected>هر ۲ ساعت</option>
@@ -214,6 +229,9 @@
             <button class="btn btn-primary" style="width:100%; padding:15px;" onclick="saveSettings()">
                 💾 ذخیره تنظیمات
             </button>
+            <button onclick="testVoice()" style="width:100%; margin-top:10px; background:var(--blue); color:white; border:none; padding:12px; border-radius:12px; cursor:pointer;">
+                🔊 تست صدا
+            </button>
             <button onclick="clearAll()" style="color:var(--red); background:none; border:none; width:100%; margin-top:20px; cursor:pointer;">
                 🗑️ پاکسازی کامل داده‌ها
             </button>
@@ -221,7 +239,7 @@
         <div class="card">
             <label>📚 درباره</label>
             <div style="font-size: 0.8rem; color: var(--muted); line-height: 1.7;">
-                Syca v14 — مربی هوشمند شخصی شما<br>
+                Syca v15 — مربی هوشمند شخصی شما<br>
                 مبتنی بر Gemini API<br>
                 داده‌ها در مرورگر شما (localStorage) ذخیره می‌شوند.
             </div>
@@ -241,13 +259,60 @@ let db = JSON.parse(localStorage.getItem('syca_db')) || {
     tasks: [],
     logs: [],
     chatHistory: { quick: [], deep: [] },
-    settings: { key: "", checkInt: "2", feedInt: "4", nightTime: "23:30" },
+    settings: { 
+        key: "", checkInt: "2", feedInt: "4", nightTime: "23:30",
+        voiceMode: "auto"
+    },
     lastSummary: "",
     lastMood: ""
 };
 
 let recognition = null;
 let currentRecordingType = null;
+
+// ============ مدیریت صداهای TTS ============
+let availableVoices = [];
+let persianVoice = null;
+let englishVoice = null;
+
+function loadVoices() {
+    availableVoices = window.speechSynthesis.getVoices();
+
+    // پیدا کردن صدای فارسی (fa-IR، fa، Persian، Farsi)
+    persianVoice = availableVoices.find(v =>
+        v.lang === 'fa-IR' ||
+        v.lang === 'fa' ||
+        v.lang.startsWith('fa-') ||
+        /persian|farsi/i.test(v.name)
+    );
+
+    // پیدا کردن بهترین صدای انگلیسی (ترجیح: en-US یا en-GB)
+    englishVoice = availableVoices.find(v => v.lang === 'en-US') ||
+                   availableVoices.find(v => v.lang === 'en-GB') ||
+                   availableVoices.find(v => v.lang.startsWith('en-')) ||
+                   availableVoices.find(v => v.lang === 'en');
+
+    console.log('Persian voice:', persianVoice?.name || 'NOT FOUND');
+    console.log('English voice:', englishVoice?.name || 'NOT FOUND');
+    console.log('Total voices:', availableVoices.length);
+
+    // بروزرسانی نمایش وضعیت در تنظیمات
+    updateVoiceStatus();
+}
+
+function updateVoiceStatus() {
+    const el = document.getElementById('voice-availability');
+    if (!el) return;
+    const fa = persianVoice ? `✅ فارسی (${persianVoice.name})` : '❌ فارسی موجود نیست';
+    const en = englishVoice ? `✅ انگلیسی (${englishVoice.name})` : '❌ انگلیسی موجود نیست';
+    el.innerHTML = `${fa}<br>${en}`;
+}
+
+// صداها در بعضی مرورگرها async لود میشن
+if ('speechSynthesis' in window) {
+    loadVoices();
+    window.speechSynthesis.onvoiceschanged = loadVoices;
+}
 
 // ============ ابزارهای کمکی ============
 function escapeHtml(s) {
@@ -272,7 +337,10 @@ function showPage(p) {
     document.querySelectorAll('nav div').forEach(el => el.classList.remove('active'));
     document.getElementById('page-' + p).classList.add('active');
     document.getElementById('nav-' + p).classList.add('active');
-    if (p === 'settings') loadSettings();
+    if (p === 'settings') {
+        loadSettings();
+        updateVoiceStatus();
+    }
     render();
 }
 
@@ -282,6 +350,7 @@ function loadSettings() {
     document.getElementById('interval-check').value = db.settings.checkInt || "2";
     document.getElementById('interval-feedback').value = db.settings.feedInt || "4";
     document.getElementById('nightly-review-time').value = db.settings.nightTime || "23:30";
+    document.getElementById('voice-mode').value = db.settings.voiceMode || "auto";
 }
 
 function saveSettings() {
@@ -289,11 +358,18 @@ function saveSettings() {
     db.settings.checkInt = document.getElementById('interval-check').value;
     db.settings.feedInt = document.getElementById('interval-feedback').value;
     db.settings.nightTime = document.getElementById('nightly-review-time').value;
+    db.settings.voiceMode = document.getElementById('voice-mode').value;
     saveDB();
     alert("✅ تنظیمات ذخیره شد.");
 }
 
-// ============ میکروفون (نسخه ساده مثل جمینای v13) ============
+function testVoice() {
+    const mode = document.getElementById('voice-mode').value;
+    if (mode === 'off') return alert("صدا خاموش است.");
+    speak("سلام، این یک تست صدا است.", "Hello, this is a voice test.");
+}
+
+// ============ میکروفون ============
 function toggleMic(inputId, type) {
     const micBtn = document.getElementById('mic-' + type);
 
@@ -308,7 +384,6 @@ function toggleMic(inputId, type) {
     recognition = new SpeechRec();
     recognition.lang = 'fa-IR';
     recognition.continuous = true;
-    // interimResults را ست نمی‌کنیم → پیش‌فرض false → فقط نتایج نهایی
     currentRecordingType = type;
 
     recognition.onstart = () => micBtn.classList.add('recording');
@@ -358,7 +433,6 @@ async function handleAI(type) {
     addMessage(type, 'user', `(${timestamp}) ${userText}`);
     document.getElementById(inputId).value = "";
 
-    // نشان دادن "در حال فکر کردن"
     addMessage(type, 'ai', '⏳ در حال تحلیل...');
 
     const models = [
@@ -383,14 +457,16 @@ ${currentTasks}
 پیام فعلی کاربر: "${userText}"
 
 وظایف تو:
-1. یک پاسخ دوستانه و مفید بده (2-4 جمله، کامل و واضح)
-2. اگر کاربر کاری رو ذکر کرد که باید انجام بده، اون رو به عنوان task استخراج کن
-3. وضعیت کلی روحی/شرایطی کاربر رو در یک کلمه ارزیابی کن
+1. یک پاسخ دوستانه و مفید فارسی بده (2-4 جمله، کامل و واضح)
+2. همون پاسخ رو به انگلیسی هم ترجمه کن (طبیعی و روان، نه ترجمه‌ی تحت‌اللفظی) - برای پخش صوتی روی دستگاه‌هایی که فارسی پشتیبانی نمی‌کنن
+3. اگر کاربر کاری رو ذکر کرد که باید انجام بده، اون رو به عنوان task استخراج کن
+4. وضعیت کلی روحی/شرایطی کاربر رو در یک کلمه ارزیابی کن
 
 ❗ حتماً پاسخ رو فقط و فقط در قالب JSON معتبر زیر برگردون، بدون هیچ متن اضافه یا markdown:
 
 {
-  "reply": "پاسخ گرم و کامل به کاربر در 2-4 جمله",
+  "reply": "پاسخ گرم و کامل به کاربر در 2-4 جمله فارسی",
+  "replyEnglish": "Same response translated naturally to English for TTS playback",
   "summary": "خلاصه وضعیت کاربر در یک جمله کوتاه",
   "mood": "یک کلمه: مثل آرام، پرانرژی، خسته، متمرکز، پراسترس",
   "newTasks": [
@@ -439,30 +515,26 @@ ${currentTasks}
                 continue;
             }
 
-            // پارس JSON
             let parsed;
             try {
-                // حذف markdown code fences اگر وجود داشت
                 const cleaned = rawText.replace(/```json|```/g, '').trim();
                 parsed = JSON.parse(cleaned);
             } catch (parseErr) {
                 console.error("Parse error:", parseErr, "Raw:", rawText);
-                // اگر JSON پارس نشد، خود متن خام رو به عنوان reply نشون بده
-                parsed = { reply: rawText, summary: "", mood: "", newTasks: [] };
+                parsed = { reply: rawText, replyEnglish: "", summary: "", mood: "", newTasks: [] };
             }
 
-            // حذف پیام "در حال تحلیل" و افزودن پاسخ واقعی
             db.chatHistory[type].pop();
 
             const reply = parsed.reply || "پاسخ دریافت شد.";
-            addMessage(type, 'ai', reply);
-            speak(reply);
+            const replyEnglish = parsed.replyEnglish || "";
 
-            // به‌روزرسانی summary و mood
+            addMessage(type, 'ai', reply);
+            speak(reply, replyEnglish);
+
             if (parsed.summary) db.lastSummary = parsed.summary;
             if (parsed.mood) db.lastMood = parsed.mood;
 
-            // افزودن task های جدید
             if (Array.isArray(parsed.newTasks) && parsed.newTasks.length > 0) {
                 parsed.newTasks.forEach(t => {
                     if (t && t.title) {
@@ -489,7 +561,6 @@ ${currentTasks}
     }
 
     if (!success) {
-        // حذف پیام "در حال تحلیل"
         db.chatHistory[type].pop();
         addMessage(type, 'ai', `⚠️ خطا در اتصال:\n${lastError}`);
     }
@@ -503,15 +574,74 @@ function addMessage(type, role, text) {
     render();
 }
 
-function speak(t) {
+// ============ سیستم هوشمند پخش صدا ============
+function speak(persianText, englishText) {
     try {
+        if (!('speechSynthesis' in window)) {
+            console.log("TTS not supported");
+            return;
+        }
+
+        const mode = db.settings.voiceMode || "auto";
+        if (mode === "off") return;
+
+        // اگه هنوز صداها لود نشدن، یه بار دیگه بخون
+        if (availableVoices.length === 0) loadVoices();
+
         window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(t);
-        utterance.lang = 'fa-IR';
+
+        let textToSpeak = "";
+        let voiceToUse = null;
+        let langToUse = "";
+
+        if (mode === "fa") {
+            // فقط فارسی
+            textToSpeak = persianText;
+            voiceToUse = persianVoice;
+            langToUse = "fa-IR";
+        } else if (mode === "en") {
+            // فقط انگلیسی
+            textToSpeak = englishText || persianText;
+            voiceToUse = englishVoice;
+            langToUse = "en-US";
+        } else {
+            // auto: اگه فارسی موجوده ازش استفاده کن، وگرنه انگلیسی
+            if (persianVoice) {
+                textToSpeak = persianText;
+                voiceToUse = persianVoice;
+                langToUse = "fa-IR";
+            } else if (englishVoice && englishText) {
+                textToSpeak = englishText;
+                voiceToUse = englishVoice;
+                langToUse = "en-US";
+                console.log("Persian voice not found, falling back to English");
+            } else {
+                // هیچ صدای مناسبی نیست
+                console.log("No suitable voice available");
+                return;
+            }
+        }
+
+        if (!textToSpeak) return;
+
+        const utterance = new SpeechSynthesisUtterance(textToSpeak);
+        utterance.lang = langToUse;
+        if (voiceToUse) utterance.voice = voiceToUse;
         utterance.rate = 1.0;
-        window.speechSynthesis.speak(utterance);
+        utterance.pitch = 1.0;
+        utterance.volume = 1.0;
+
+        utterance.onerror = (e) => {
+            console.error("TTS error:", e);
+        };
+
+        // کمی تأخیر برای جلوگیری از باگ Chrome
+        setTimeout(() => {
+            window.speechSynthesis.speak(utterance);
+        }, 100);
+
     } catch (e) {
-        console.error("TTS error:", e);
+        console.error("Speak error:", e);
     }
 }
 
@@ -576,7 +706,6 @@ function renderTaskItem(t, showDelete = true) {
 }
 
 function render() {
-    // چت‌ها
     ['quick', 'deep'].forEach(type => {
         const log = document.getElementById(type + '-chat-log');
         if (log) {
@@ -587,7 +716,6 @@ function render() {
         }
     });
 
-    // خلاصه و mood
     const summaryEl = document.getElementById('strategic-summary');
     if (summaryEl) {
         summaryEl.innerText = db.lastSummary || "منتظر گزارش شما هستم...";
@@ -597,7 +725,6 @@ function render() {
         moodEl.innerText = db.lastMood ? `🎭 حال و احوال: ${db.lastMood}` : "";
     }
 
-    // لیست task ها در صفحه اصلی (فقط فعال یا اخیر)
     const homeTasks = document.getElementById('home-task-list');
     if (homeTasks) {
         const activeTasks = db.tasks.filter(t => !t.done);
@@ -611,7 +738,6 @@ function render() {
         if (visibleTasks.length === 0) {
             homeTasks.innerHTML = `<div class="empty-state">هنوز کاری ثبت نشده.<br>یه گزارش بدید تا سیکا براتون پیشنهاد بده.</div>`;
         } else {
-            // اولویت‌بندی: high → medium → low
             const priorityOrder = { high: 0, medium: 1, low: 2 };
             visibleTasks.sort((a, b) => {
                 if (a.done !== b.done) return a.done ? 1 : -1;
@@ -620,7 +746,6 @@ function render() {
             homeTasks.innerHTML = visibleTasks.map(t => renderTaskItem(t, false)).join('');
         }
 
-        // آمار
         const statsEl = document.getElementById('task-stats');
         if (statsEl) {
             const total = db.tasks.length;
@@ -634,7 +759,6 @@ function render() {
         }
     }
 
-    // صفحه استراتژی - همه task ها با امکان حذف
     const lt = document.getElementById('lt-list-detailed');
     if (lt) {
         if (db.tasks.length === 0) {
@@ -661,6 +785,8 @@ function clearAll() {
 window.onload = () => {
     render();
     if (db.settings.key) loadSettings();
+    // یه تأخیر کوتاه برای لود کردن صداها
+    setTimeout(loadVoices, 500);
 };
 </script>
 </body>
