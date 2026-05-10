@@ -293,18 +293,12 @@ function saveSettings() {
     alert("✅ تنظیمات ذخیره شد.");
 }
 
-// ============ میکروفون (نسخه پایدار - بدون interim) ============
-// کاربر نگه‌می‌داره، صحبت می‌کنه، روی همون دکمه می‌زنه تا قطع بشه و ارسال شه
-let userStoppedManually = false;
-
+// ============ میکروفون (نسخه ساده مثل جمینای v13) ============
 function toggleMic(inputId, type) {
     const micBtn = document.getElementById('mic-' + type);
-    const inputEl = document.getElementById(inputId);
 
-    // اگه در حال ضبط هست → توقف
     if (recognition && currentRecordingType === type) {
-        userStoppedManually = true;
-        try { recognition.stop(); } catch(e) {}
+        recognition.stop();
         return;
     }
 
@@ -313,73 +307,38 @@ function toggleMic(inputId, type) {
 
     recognition = new SpeechRec();
     recognition.lang = 'fa-IR';
-    recognition.continuous = false;       // ← هر بار یه قطعه (پایدارتر روی موبایل)
-    recognition.interimResults = false;   // ← فقط نتایج تثبیت‌شده (جلوگیری از تکرار)
-    recognition.maxAlternatives = 1;
+    recognition.continuous = true;
+    // interimResults را ست نمی‌کنیم → پیش‌فرض false → فقط نتایج نهایی
     currentRecordingType = type;
-    userStoppedManually = false;
 
-    // متن انباشته بین نوبت‌های continuous=false
-    let accumulatedText = inputEl.value.trim();
-
-    recognition.onstart = () => {
-        micBtn.classList.add('recording');
-    };
+    recognition.onstart = () => micBtn.classList.add('recording');
 
     recognition.onresult = (e) => {
-        // فقط آخرین نتیجه final رو می‌گیریم
-        const lastResult = e.results[e.results.length - 1];
-        if (lastResult && lastResult.isFinal) {
-            const newText = lastResult[0].transcript.trim();
-            // اضافه کردن به متن انباشته با فاصله
-            accumulatedText = accumulatedText
-                ? accumulatedText + ' ' + newText
-                : newText;
-            inputEl.value = accumulatedText;
+        let t = "";
+        for (let i = 0; i < e.results.length; i++) {
+            t += e.results[i][0].transcript;
         }
+        document.getElementById(inputId).value = t;
     };
 
     recognition.onerror = (e) => {
         console.error("Speech error:", e.error);
         micBtn.classList.remove('recording');
-        if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
-            alert("⚠️ دسترسی به میکروفون رد شد. لطفاً در تنظیمات مرورگر فعال کنید.");
-        }
         recognition = null;
         currentRecordingType = null;
     };
 
     recognition.onend = () => {
-        // در حالت continuous=false، بعد از هر pause تموم میشه
-        // اگه کاربر دستی نزده، دوباره start کن (تا کاربر حرفش رو کامل کنه)
-        if (!userStoppedManually && currentRecordingType === type) {
-            try {
-                recognition.start();
-                return;
-            } catch(e) {
-                console.log("Restart failed:", e);
-            }
-        }
-
-        // پایان واقعی (کاربر دکمه زد)
         micBtn.classList.remove('recording');
         const wasType = currentRecordingType;
         recognition = null;
         currentRecordingType = null;
-
-        // ارسال خودکار اگه متنی هست
-        if (wasType && inputEl.value.trim()) {
-            setTimeout(() => handleAI(wasType), 300);
+        if (wasType && document.getElementById(inputId).value.trim()) {
+            setTimeout(() => handleAI(wasType), 500);
         }
     };
 
-    try {
-        recognition.start();
-    } catch(e) {
-        console.error("Start error:", e);
-        recognition = null;
-        currentRecordingType = null;
-    }
+    recognition.start();
 }
 
 // ============ موتور هوشمند Gemini ============
