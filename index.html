@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Syca v19 | ADHD-Friendly Coach</title>
+    <title>Syca v21 | Migration-Safe</title>
     <style>
         :root {
             --primary: #8b5cf6; --bg: #0a0a0c; --card: #16161e; --text: #f4f4f5;
@@ -37,15 +37,9 @@
             padding: 15px; margin-bottom: 15px;
             border: 1px solid var(--border);
         }
-        .chat-card {
-            display: flex; flex-direction: column;
-            height: 380px; overflow: hidden;
-        }
+        .chat-card { display: flex; flex-direction: column; height: 380px; overflow: hidden; }
         .chat-card label, .chat-card .input-row { flex-shrink: 0; }
-        label {
-            display: block; font-size: 0.75rem;
-            color: var(--primary); margin-bottom: 8px; font-weight: bold;
-        }
+        label { display: block; font-size: 0.75rem; color: var(--primary); margin-bottom: 8px; font-weight: bold; }
         input, select {
             width: 100%; background: #000; border: 1px solid var(--border);
             padding: 12px; border-radius: 12px; color: white;
@@ -82,7 +76,6 @@
         }
         .input-row { display: flex; gap: 8px; align-items: flex-start; }
         .input-row input, .input-row textarea { margin-bottom: 0; flex: 1; }
-
         .chat-container {
             flex: 1; min-height: 0;
             overflow-y: auto; margin-top: 12px;
@@ -106,7 +99,8 @@
         }
         .user { align-self: flex-start; background: var(--border); border-right: 4px solid var(--blue); }
         .ai { align-self: flex-end; background: rgba(139, 92, 246, 0.1); border-left: 4px solid var(--primary); text-align: right; }
-
+        .msg.checkin { background: rgba(6, 182, 212, 0.1); border-left: 4px solid var(--cyan); }
+        .msg.feedback-req { background: rgba(249, 115, 22, 0.1); border-left: 4px solid var(--orange); }
         .status-badge {
             display: inline-block; padding: 4px 12px; border-radius: 20px;
             font-size: 0.7rem; background: var(--green); color: white; margin-bottom: 10px;
@@ -128,10 +122,7 @@
         }
         .task-checkbox.checked { background: var(--green); border-color: var(--green); color: white; }
         .task-text { flex: 1; font-size: 0.85rem; min-width: 100px; }
-        .task-tag {
-            font-size: 0.65rem; padding: 2px 8px; border-radius: 10px;
-            white-space: nowrap;
-        }
+        .task-tag { font-size: 0.65rem; padding: 2px 8px; border-radius: 10px; white-space: nowrap; }
         .priority-high { background: rgba(239, 68, 68, 0.2); color: var(--red); }
         .priority-medium { background: rgba(245, 158, 11, 0.2); color: var(--amber); }
         .priority-low { background: rgba(16, 185, 129, 0.2); color: var(--green); }
@@ -148,20 +139,10 @@
         .deadline-tag { background: rgba(239, 68, 68, 0.15); color: var(--red); }
         .blocked-tag { background: rgba(113, 113, 122, 0.2); color: var(--muted); font-style: italic; }
         .task-delete { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 1rem; padding: 4px; }
-        .task-feedback-btn {
-            background: rgba(249, 115, 22, 0.1); border: 1px solid var(--orange);
-            color: var(--orange); border-radius: 8px; padding: 4px 8px;
-            font-size: 0.7rem; cursor: pointer; margin-right: 4px;
-        }
-
         .empty-state { font-size: 0.8rem; color: var(--muted); text-align: center; padding: 15px 0; }
         .summary-text { font-size: 0.85rem; color: #d4d4d8; line-height: 1.6; }
         .mood-indicator { font-size: 0.75rem; color: var(--muted); margin-top: 8px; }
-
-        .stats-row {
-            display: flex; justify-content: space-around;
-            font-size: 0.75rem; color: var(--muted); margin-top: 10px;
-        }
+        .stats-row { display: flex; justify-content: space-around; font-size: 0.75rem; color: var(--muted); margin-top: 10px; }
         .stat-num { color: var(--text); font-weight: bold; font-size: 1rem; }
         .voice-status {
             font-size: 0.7rem; color: var(--muted);
@@ -183,10 +164,7 @@
             cursor: pointer; font-size: 0.8rem; color: var(--muted); transition: 0.2s;
         }
         .tab.active { background: var(--primary); color: white; font-weight: bold; }
-        .progress-bar {
-            height: 6px; background: var(--border); border-radius: 3px;
-            margin-top: 8px; overflow: hidden;
-        }
+        .progress-bar { height: 6px; background: var(--border); border-radius: 3px; margin-top: 8px; overflow: hidden; }
         .progress-fill { height: 100%; background: var(--green); transition: width 0.3s; }
         .quick-add-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
         .quick-add-row select { flex: 1; min-width: 100px; margin-bottom: 0; padding: 8px; font-size: 0.8rem; }
@@ -216,8 +194,24 @@
             font-size: 0.85rem; cursor: pointer; display: flex;
             justify-content: space-between; align-items: center;
         }
-
-        /* ✨ کارت Idle Time (ADHD-friendly) */
+        .checkin-banner {
+            background: linear-gradient(135deg, var(--cyan), var(--blue));
+            border-radius: 16px; padding: 12px 16px; margin-bottom: 15px;
+            font-size: 0.85rem; cursor: pointer; display: flex;
+            justify-content: space-between; align-items: center;
+            animation: gentleGlow 2s ease-in-out infinite alternate;
+        }
+        .feedback-banner {
+            background: linear-gradient(135deg, var(--orange), var(--amber));
+            border-radius: 16px; padding: 12px 16px; margin-bottom: 15px;
+            font-size: 0.85rem; cursor: pointer; display: flex;
+            justify-content: space-between; align-items: center;
+            animation: gentleGlow 2s ease-in-out infinite alternate;
+        }
+        @keyframes gentleGlow {
+            from { box-shadow: 0 0 5px rgba(255,255,255,0.1); }
+            to { box-shadow: 0 0 15px rgba(255,255,255,0.3); }
+        }
         .idle-card {
             background: linear-gradient(135deg, rgba(249,115,22,0.15), rgba(236,72,153,0.1));
             border: 1px solid var(--orange);
@@ -227,16 +221,22 @@
             border: 1px solid var(--orange);
             border-radius: 12px; padding: 12px; margin-top: 10px;
         }
-        .idle-bundle-title {
-            font-size: 0.85rem; color: var(--orange);
-            font-weight: bold; margin-bottom: 8px;
-        }
+        .idle-bundle-title { font-size: 0.85rem; color: var(--orange); font-weight: bold; margin-bottom: 8px; }
         .idle-task-row {
             display: flex; align-items: center; gap: 8px;
             padding: 6px 0; border-bottom: 1px dashed var(--border);
         }
         .idle-task-row:last-child { border-bottom: none; }
         .idle-task-row .task-text { font-size: 0.8rem; }
+        .schedule-info {
+            font-size: 0.7rem; color: var(--muted);
+            margin-top: 5px; padding: 6px 10px; background: #000;
+            border-radius: 8px; line-height: 1.5;
+        }
+        .backup-box {
+            margin-top: 20px; padding: 15px; background: #000;
+            border-radius: 12px; border: 1px solid var(--green);
+        }
     </style>
 </head>
 <body>
@@ -247,18 +247,21 @@
         <h1>SYCA CENTER</h1>
 
         <div id="nightly-banner" class="nightly-banner" style="display:none;" onclick="openNightlyReview()">
-            <span>🌙 وقت مرور شبانه است.</span>
-            <span>›</span>
+            <span>🌙 وقت مرور شبانه است.</span><span>›</span>
+        </div>
+        <div id="checkin-banner" class="checkin-banner" style="display:none;" onclick="answerCheckin()">
+            <span>📍 سیکا می‌خواد بدونه الان کجایی و چی کار می‌کنی.</span><span>›</span>
+        </div>
+        <div id="feedback-banner" class="feedback-banner" style="display:none;" onclick="answerFeedback()">
+            <span>📊 سیکا می‌خواد بدونه کارها چطور پیش رفت.</span><span>›</span>
         </div>
 
-        <!-- بخش ۱: تحلیل وضعیت -->
         <div class="card" style="border-color: var(--green);">
             <div class="status-badge">📊 تحلیل وضعیت لحظه‌ای</div>
             <div id="strategic-summary" class="summary-text">در انتظار اولین تعامل...</div>
             <div id="mood-indicator" class="mood-indicator"></div>
         </div>
 
-        <!-- ✨ بخش جدید: تایم خالی دارم! -->
         <div class="card idle-card">
             <label style="color:var(--orange)">⚡ الان وقت خالی دارم!</label>
             <div style="font-size:0.75rem; color:var(--muted); margin-bottom:10px;">
@@ -270,7 +273,6 @@
             <div id="idle-suggestions" style="margin-top:12px;"></div>
         </div>
 
-        <!-- بخش کارهای پیشنهادی امروز -->
         <div class="card" style="border-color: var(--amber);">
             <label style="color:var(--amber)">📋 کارهای پیشنهادی امروز</label>
             <div id="today-context-info" style="font-size:0.7rem; color:var(--muted); margin-bottom:10px;"></div>
@@ -282,7 +284,6 @@
             </div>
         </div>
 
-        <!-- بخش ثبت سریع کار -->
         <div class="card" style="border-color: var(--cyan);">
             <label style="color:var(--cyan)">⚡ ثبت سریع کار</label>
             <div class="input-row">
@@ -304,7 +305,6 @@
             </div>
         </div>
 
-        <!-- بخش گزارش سریع -->
         <div class="card chat-card" style="border-color: var(--blue);">
             <label style="color:var(--blue)">🚀 گزارش سریع</label>
             <div style="font-size:0.7rem; color:var(--muted); margin-bottom:8px;">
@@ -318,7 +318,6 @@
             <div id="quick-chat-log" class="chat-container"></div>
         </div>
 
-        <!-- بخش میز مشورت -->
         <div class="card chat-card">
             <label>🧠 میز مشورت</label>
             <div style="font-size:0.7rem; color:var(--muted); margin-bottom:8px;">
@@ -336,14 +335,12 @@
     <!-- ============ صفحه استراتژی ============ -->
     <div id="page-strategy" class="page">
         <h1>🎯 مدیریت کارها و اهداف</h1>
-
         <div class="tabs">
             <div class="tab active" onclick="switchTab('goals')" id="tab-goals">🎯 اهداف</div>
             <div class="tab" onclick="switchTab('all-tasks')" id="tab-all-tasks">📋 همه کارها</div>
             <div class="tab" onclick="switchTab('pairings')" id="tab-pairings">🔗 جفت‌ها</div>
         </div>
 
-        <!-- تب اهداف -->
         <div id="tab-content-goals">
             <div class="card">
                 <label>➕ هدف بلندمدت جدید</label>
@@ -359,7 +356,6 @@
             <div id="goals-list"></div>
         </div>
 
-        <!-- تب همه کارها -->
         <div id="tab-content-all-tasks" style="display:none;">
             <div class="card">
                 <label>➕ افزودن کار</label>
@@ -391,10 +387,9 @@
                         <option value="120">⏱ ۲+ ساعت</option>
                     </select>
                 </div>
-                <input type="date" id="new-task-deadline" placeholder="ددلاین (اختیاری)">
+                <input type="date" id="new-task-deadline" placeholder="ددلاین">
                 <button class="btn btn-primary" style="width:100%;" onclick="addManualTask()">افزودن</button>
             </div>
-
             <div class="card">
                 <label>🔍 فیلتر</label>
                 <div class="quick-add-row">
@@ -418,16 +413,14 @@
                     </select>
                 </div>
             </div>
-
             <div id="lt-list-detailed"></div>
         </div>
 
-        <!-- ✨ تب جدید: جفت‌های یادگرفته‌شده -->
         <div id="tab-content-pairings" style="display:none;">
             <div class="card">
                 <label>🔗 جفت‌هایی که سیکا یاد گرفته</label>
                 <div style="font-size:0.75rem; color:var(--muted); margin-bottom:10px; line-height:1.7;">
-                    هر بار که می‌گی "موقع X خوب بود Y کنارش انجام دادم"، اینجا ذخیره میشه و در پیشنهادهای بعدی استفاده میشه.
+                    هر بار که می‌گی "موقع X خوب بود Y کنارش انجام دادم"، اینجا ذخیره میشه.
                 </div>
                 <div id="pairings-list"></div>
             </div>
@@ -455,6 +448,70 @@
                 <b>iOS:</b> Settings → Accessibility → Spoken Content → Voices<br>
                 <b>ویندوز:</b> Settings → Time & Language → Speech<br>
                 <b>مک:</b> System Settings → Accessibility → Spoken Content
+            </div>
+
+            <div style="margin-top:20px; padding:15px; background:#000; border-radius:12px; border:1px solid var(--cyan);">
+                <label style="color:var(--cyan)">📍 بررسی وضعیت دوره‌ای</label>
+                <div style="font-size:0.7rem; color:var(--muted); margin-bottom:8px;">
+                    سیکا هر چند ساعت ازت می‌پرسه "الان کجایی و چی کار می‌کنی؟"
+                </div>
+                <select id="interval-check">
+                    <option value="0">⏸ غیرفعال</option>
+                    <option value="1">هر ۱ ساعت</option>
+                    <option value="2" selected>هر ۲ ساعت</option>
+                    <option value="3">هر ۳ ساعت</option>
+                    <option value="4">هر ۴ ساعت</option>
+                </select>
+                <div class="quick-add-row">
+                    <select id="check-from-hour" style="flex:1;">
+                        <option value="">از ساعت...</option>
+                    </select>
+                    <select id="check-to-hour" style="flex:1;">
+                        <option value="">تا ساعت...</option>
+                    </select>
+                </div>
+                <div class="schedule-info" id="check-schedule-info"></div>
+                <div style="margin-top:8px;">
+                    <label style="font-size:0.7rem; color:var(--muted);">روش اطلاع‌رسانی:</label>
+                    <select id="check-method">
+                        <option value="both" selected>🔔 نوتیفیکیشن + 🔊 صدا</option>
+                        <option value="notif">فقط نوتیفیکیشن</option>
+                        <option value="voice">فقط صدا</option>
+                        <option value="banner">فقط banner</option>
+                    </select>
+                </div>
+            </div>
+
+            <div style="margin-top:15px; padding:15px; background:#000; border-radius:12px; border:1px solid var(--orange);">
+                <label style="color:var(--orange)">📊 فیدبک عملکرد دوره‌ای</label>
+                <div style="font-size:0.7rem; color:var(--muted); margin-bottom:8px;">
+                    سیکا می‌پرسه "کارهایی که پیشنهاد دادم چطور پیش رفت؟"
+                </div>
+                <select id="interval-feedback">
+                    <option value="0">⏸ غیرفعال</option>
+                    <option value="2">هر ۲ ساعت</option>
+                    <option value="4" selected>هر ۴ ساعت</option>
+                    <option value="6">هر ۶ ساعت</option>
+                    <option value="8">هر ۸ ساعت</option>
+                </select>
+                <div class="quick-add-row">
+                    <select id="feedback-from-hour" style="flex:1;">
+                        <option value="">از ساعت...</option>
+                    </select>
+                    <select id="feedback-to-hour" style="flex:1;">
+                        <option value="">تا ساعت...</option>
+                    </select>
+                </div>
+                <div class="schedule-info" id="feedback-schedule-info"></div>
+                <div style="margin-top:8px;">
+                    <label style="font-size:0.7rem; color:var(--muted);">روش اطلاع‌رسانی:</label>
+                    <select id="feedback-method">
+                        <option value="both" selected>🔔 نوتیفیکیشن + 🔊 صدا</option>
+                        <option value="notif">فقط نوتیفیکیشن</option>
+                        <option value="voice">فقط صدا</option>
+                        <option value="banner">فقط banner</option>
+                    </select>
+                </div>
             </div>
 
             <label style="margin-top:15px;">🌙 ساعت مرور شبانه</label>
@@ -492,6 +549,31 @@
             <button onclick="testVoice()" style="width:100%; margin-top:10px; background:var(--blue); color:white; border:none; padding:12px; border-radius:12px; cursor:pointer;">
                 🔊 تست صدا
             </button>
+            <button onclick="triggerCheckinNow()" style="width:100%; margin-top:10px; background:var(--cyan); color:white; border:none; padding:12px; border-radius:12px; cursor:pointer;">
+                📍 تست چک‌این (الان)
+            </button>
+            <button onclick="triggerFeedbackNow()" style="width:100%; margin-top:10px; background:var(--orange); color:white; border:none; padding:12px; border-radius:12px; cursor:pointer;">
+                📊 تست فیدبک (الان)
+            </button>
+
+            <!-- ✨ پشتیبان‌گیری -->
+            <div class="backup-box">
+                <label style="color:var(--green)">💾 پشتیبان‌گیری از داده‌ها</label>
+                <div style="font-size:0.7rem; color:var(--muted); margin-bottom:10px; line-height:1.6;">
+                    قبل از آپدیت کد یا پاک کردن مرورگر، یه پشتیبان بگیر. فایل JSON دانلود می‌شه که شامل همه اهداف، کارها، جفت‌ها و تنظیمات هست.
+                </div>
+                <button onclick="exportBackup()" style="width:100%; background:var(--green); color:white; border:none; padding:12px; border-radius:12px; cursor:pointer; margin-bottom:8px; font-size:0.85rem;">
+                    📥 دانلود پشتیبان
+                </button>
+                <button onclick="importBackup()" style="width:100%; background:var(--amber); color:white; border:none; padding:12px; border-radius:12px; cursor:pointer; margin-bottom:8px; font-size:0.85rem;">
+                    📤 بازیابی از پشتیبان (جایگزین کامل)
+                </button>
+                <button onclick="mergeBackup()" style="width:100%; background:var(--cyan); color:white; border:none; padding:12px; border-radius:12px; cursor:pointer; font-size:0.85rem;">
+                    🔀 ترکیب با پشتیبان (اضافه‌کردن موارد جدید)
+                </button>
+                <div id="db-info" style="font-size:0.65rem; color:var(--muted); margin-top:10px; text-align:center;"></div>
+            </div>
+
             <button onclick="clearAll()" style="color:var(--red); background:none; border:none; width:100%; margin-top:20px; cursor:pointer;">
                 🗑️ پاکسازی کامل داده‌ها
             </button>
@@ -499,7 +581,7 @@
     </div>
 </div>
 
-<!-- ============ مودال مرور شبانه ============ -->
+<!-- مودال مرور شبانه -->
 <div id="nightly-modal" class="modal-overlay">
     <div class="modal">
         <h2 style="margin-top:0;">🌙 مرور شبانه</h2>
@@ -533,12 +615,10 @@
             </div>
             <div class="review-question">
                 <p><b>۴. چیز خاصی هست که حتما باید فردا انجام بدی؟</b></p>
-                <textarea id="tomorrow-notes" rows="2" placeholder="مثلا: ایمیل به X، تماس با Y..."></textarea>
+                <textarea id="tomorrow-notes" rows="2" placeholder="مثلا: ایمیل به X..."></textarea>
             </div>
             <div style="display:flex; gap:8px;">
-                <button class="btn btn-primary" style="flex:1;" onclick="submitNightlyReview()">
-                    ✨ تولید برنامه
-                </button>
+                <button class="btn btn-primary" style="flex:1;" onclick="submitNightlyReview()">✨ تولید برنامه</button>
                 <button class="btn-icon" onclick="closeNightlyReview()">✕</button>
             </div>
         </div>
@@ -549,14 +629,14 @@
     </div>
 </div>
 
-<!-- ✨ مودال جدید: Idle Time -->
+<!-- مودال Idle Time -->
 <div id="idle-modal" class="modal-overlay">
     <div class="modal">
         <h2 style="margin-top:0;">⚡ تایم خالی دارم!</h2>
         <div id="idle-step-1">
             <div class="review-question">
                 <p><b>۱. الان داری چیکار می‌کنی؟</b></p>
-                <input type="text" id="idle-current-activity" placeholder="مثلا: آشپزی، رانندگی، انتظار..." list="common-activities">
+                <input type="text" id="idle-current-activity" placeholder="مثلا: آشپزی، رانندگی..." list="common-activities">
                 <datalist id="common-activities">
                     <option value="آشپزی"><option value="رانندگی"><option value="در حال رفتن به جایی">
                     <option value="انتظار در صف"><option value="در حال خوردن غذا"><option value="در حال ورزش">
@@ -582,9 +662,7 @@
                 </select>
             </div>
             <div style="display:flex; gap:8px;">
-                <button class="btn btn-orange" style="flex:1;" onclick="generateIdleSuggestions()">
-                    🎯 پیشنهاد بده
-                </button>
+                <button class="btn btn-orange" style="flex:1;" onclick="generateIdleSuggestions()">🎯 پیشنهاد بده</button>
                 <button class="btn-icon" onclick="closeIdleModal()">✕</button>
             </div>
         </div>
@@ -602,21 +680,152 @@
 </nav>
 
 <script>
-// ============ دیتابیس v19 ============
-let db = JSON.parse(localStorage.getItem('syca_db_v19')) || {
+// ============ سیستم Migration و دیتابیس ============
+const CURRENT_DB_VERSION = 21;
+
+function generateId() {
+    return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+}
+
+const DEFAULT_DB = {
+    dbVersion: CURRENT_DB_VERSION,
     goals: [],
     tasks: [],
-    pairings: [],  // ✨ جدید: یادگیری از تجربه
+    pairings: [],
     todayPlan: { date: null, context: [], availableHours: 4, energyLevel: 'medium', suggestedTaskIds: [], notes: '' },
     chatHistory: { quick: [], deep: [] },
     settings: {
         key: "", nightTime: "22:00", voiceMode: "auto",
-        chatHeight: "380", suggestCount: "5", notifEnabled: "yes"
+        chatHeight: "380", suggestCount: "5", notifEnabled: "yes",
+        checkInterval: "2", checkFromHour: "8", checkToHour: "22", checkMethod: "both",
+        feedbackInterval: "4", feedbackFromHour: "10", feedbackToHour: "21", feedbackMethod: "both"
     },
     lastSummary: "", lastMood: "", lastNightlyReviewDate: null,
-    pendingGoalChat: null  // برای chat-based goal breakdown
+    lastCheckinTime: null, lastFeedbackTime: null,
+    pendingGoalChat: null,
+    pendingCheckin: false, pendingFeedback: false
 };
 
+function migrateDB(oldDB) {
+    if (!oldDB) return null;
+    const oldVersion = oldDB.dbVersion || 0;
+    console.log(`Migrating DB from v${oldVersion} to v${CURRENT_DB_VERSION}`);
+
+    const newDB = JSON.parse(JSON.stringify(oldDB));
+
+    // اطمینان از وجود ساختارهای پایه
+    newDB.goals = newDB.goals || [];
+    newDB.tasks = newDB.tasks || [];
+    newDB.pairings = newDB.pairings || [];
+    newDB.chatHistory = newDB.chatHistory || { quick: [], deep: [] };
+    newDB.chatHistory.quick = newDB.chatHistory.quick || [];
+    newDB.chatHistory.deep = newDB.chatHistory.deep || [];
+    newDB.settings = newDB.settings || {};
+    newDB.todayPlan = newDB.todayPlan || { date: null, context: [], availableHours: 4, energyLevel: 'medium', suggestedTaskIds: [], notes: '' };
+
+    // migration تسک‌ها — اضافه کردن فیلدهای جدید
+    newDB.tasks.forEach(t => {
+        if (!t.id) t.id = generateId();
+        // فیلدهای قدیمی n و p
+        if (t.n && !t.title) t.title = t.n;
+        if (t.p && !t.priority) t.priority = t.p;
+        // پیش‌فرض‌ها
+        if (!t.title) t.title = "بدون عنوان";
+        if (!t.type) t.type = t.goalId ? 'subtask' : 'oneshot';
+        if (!t.priority) t.priority = 'medium';
+        if (!t.urgency) t.urgency = 'normal';
+        if (!t.context) t.context = ['home'];
+        if (!Array.isArray(t.context)) t.context = [t.context];
+        if (!t.dependsOn) t.dependsOn = [];
+        if (t.deadline === undefined) t.deadline = null;
+        if (!t.energyRequired) t.energyRequired = 'medium';
+        if (!t.estimatedMinutes) t.estimatedMinutes = 15;
+        if (t.parallelizable === undefined) t.parallelizable = (t.energyRequired === 'low');
+        if (t.interruptible === undefined) t.interruptible = true;
+        if (t.done === undefined) t.done = false;
+        if (!t.createdAt) t.createdAt = new Date().toISOString();
+        if (!t.source) t.source = 'migration';
+    });
+
+    // migration اهداف
+    newDB.goals.forEach(g => {
+        if (!g.id) g.id = generateId();
+        if (!g.title && g.n) g.title = g.n;
+        if (!g.title) g.title = "هدف بدون عنوان";
+        if (!g.status) g.status = 'active';
+        if (g.progress === undefined) g.progress = 0;
+        if (!g.createdAt) g.createdAt = new Date().toISOString();
+    });
+
+    // migration جفت‌ها
+    newDB.pairings.forEach(p => {
+        if (!p.id) p.id = generateId();
+        if (!p.companions) p.companions = [];
+        if (!p.createdAt) p.createdAt = new Date().toISOString();
+    });
+
+    // settings — فیلدهای جدید با مقدار پیش‌فرض
+    Object.keys(DEFAULT_DB.settings).forEach(k => {
+        if (newDB.settings[k] === undefined) {
+            newDB.settings[k] = DEFAULT_DB.settings[k];
+        }
+    });
+
+    // فیلدهای top-level
+    ['lastSummary', 'lastMood', 'lastNightlyReviewDate', 'lastCheckinTime',
+     'lastFeedbackTime', 'pendingGoalChat'].forEach(k => {
+        if (newDB[k] === undefined) newDB[k] = DEFAULT_DB[k];
+    });
+    if (newDB.pendingCheckin === undefined) newDB.pendingCheckin = false;
+    if (newDB.pendingFeedback === undefined) newDB.pendingFeedback = false;
+
+    // پاکسازی فیلدهای قدیمی غیرضروری
+    if (Array.isArray(newDB.logs)) delete newDB.logs;
+
+    newDB.dbVersion = CURRENT_DB_VERSION;
+    return newDB;
+}
+
+function loadDB() {
+    let raw = localStorage.getItem('syca_db');
+    let source = 'syca_db';
+
+    // اگه کلید اصلی نبود، از کلیدهای قدیمی (به ترتیب جدیدترین به قدیمی‌ترین) پیدا کن
+    if (!raw) {
+        const legacyKeys = ['syca_db_v20', 'syca_db_v19', 'syca_db_v18'];
+        for (const key of legacyKeys) {
+            const v = localStorage.getItem(key);
+            if (v) {
+                raw = v;
+                source = key;
+                console.log(`Found legacy data in ${key}, will migrate to syca_db`);
+                break;
+            }
+        }
+    }
+
+    if (!raw) {
+        console.log("No existing data, starting fresh");
+        return JSON.parse(JSON.stringify(DEFAULT_DB));
+    }
+
+    try {
+        const parsed = JSON.parse(raw);
+        const migrated = migrateDB(parsed);
+        // ذخیره با کلید جدید و ثابت
+        localStorage.setItem('syca_db', JSON.stringify(migrated));
+        if (source !== 'syca_db') {
+            console.log(`Migration complete. Old key ${source} is preserved as safety net.`);
+        }
+        return migrated;
+    } catch (e) {
+        console.error("Failed to parse DB:", e);
+        alert("⚠️ خطا در خواندن داده‌ها. به Console (F12) نگاه کن.");
+        return JSON.parse(JSON.stringify(DEFAULT_DB));
+    }
+}
+
+let db = loadDB();
 let recognition = null;
 let currentRecordingType = null;
 let activeTab = 'goals';
@@ -625,17 +834,135 @@ let activeTab = 'goals';
 function escapeHtml(s) {
     return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
-function saveDB() { localStorage.setItem('syca_db_v19', JSON.stringify(db)); }
-function generateId() { return Date.now().toString(36) + Math.random().toString(36).substr(2, 5); }
+function saveDB() { localStorage.setItem('syca_db', JSON.stringify(db)); }
 function todayStr() { return new Date().toISOString().split('T')[0]; }
 function tomorrowStr() {
     const d = new Date(); d.setDate(d.getDate() + 1);
     return d.toISOString().split('T')[0];
 }
-
 function applyChatHeight() {
     const h = db.settings.chatHeight || "380";
     document.querySelectorAll('.chat-card').forEach(c => c.style.height = h + 'px');
+}
+
+// ============ Export/Import پشتیبان ============
+function exportBackup() {
+    try {
+        const data = {
+            exportedAt: new Date().toISOString(),
+            appVersion: "Syca v21",
+            dbVersion: CURRENT_DB_VERSION,
+            data: db
+        };
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const dateStr = new Date().toISOString().split('T')[0];
+        const timeStr = new Date().toTimeString().split(' ')[0].replace(/:/g, '-');
+        a.download = `syca-backup-${dateStr}-${timeStr}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        alert("✅ پشتیبان دانلود شد.");
+    } catch (e) {
+        alert("⚠️ خطا در دانلود پشتیبان: " + e.message);
+    }
+}
+
+function importBackup() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json,application/json';
+    input.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        try {
+            const text = await file.text();
+            const parsed = JSON.parse(text);
+            const dataToImport = parsed.data || parsed;
+
+            if (!dataToImport.tasks && !dataToImport.goals && !dataToImport.settings) {
+                throw new Error("فرمت فایل نامعتبر است.");
+            }
+
+            const confirm1 = confirm(
+                `📤 پشتیبان شامل:\n` +
+                `• ${(dataToImport.goals || []).length} هدف\n` +
+                `• ${(dataToImport.tasks || []).length} کار\n` +
+                `• ${(dataToImport.pairings || []).length} جفت\n` +
+                `${parsed.exportedAt ? '• تاریخ پشتیبان: ' + new Date(parsed.exportedAt).toLocaleString('fa-IR') + '\n' : ''}` +
+                `\nآیا می‌خواهید با این پشتیبان جایگزین کنید؟\nداده‌های فعلی پاک می‌شوند.`
+            );
+            if (!confirm1) return;
+
+            // پشتیبان اضطراری از داده‌ی فعلی
+            localStorage.setItem('syca_db_before_import_' + Date.now(), JSON.stringify(db));
+
+            const migrated = migrateDB(dataToImport);
+            localStorage.setItem('syca_db', JSON.stringify(migrated));
+            db = migrated;
+            alert("✅ بازیابی موفق! صفحه رفرش می‌شود.");
+            location.reload();
+        } catch (e) {
+            alert("⚠️ خطا در بازیابی: " + e.message);
+        }
+    };
+    input.click();
+}
+
+function mergeBackup() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json,application/json';
+    input.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        try {
+            const text = await file.text();
+            const parsed = JSON.parse(text);
+            const dataToMerge = parsed.data || parsed;
+
+            const confirm1 = confirm(
+                `🔀 ترکیب پشتیبان با داده‌های فعلی:\n` +
+                `• ${(dataToMerge.goals || []).length} هدف\n` +
+                `• ${(dataToMerge.tasks || []).length} کار\n` +
+                `• ${(dataToMerge.pairings || []).length} جفت\n\n` +
+                `داده‌های فعلی حفظ می‌شن، فقط موارد جدید اضافه می‌شه.`
+            );
+            if (!confirm1) return;
+
+            const existingTaskIds = new Set(db.tasks.map(t => t.id));
+            const existingGoalIds = new Set(db.goals.map(g => g.id));
+            const existingPairingIds = new Set(db.pairings.map(p => p.id));
+
+            let addedCount = 0;
+            (dataToMerge.goals || []).forEach(g => {
+                if (!existingGoalIds.has(g.id)) { db.goals.push(g); addedCount++; }
+            });
+            (dataToMerge.tasks || []).forEach(t => {
+                if (!existingTaskIds.has(t.id)) { db.tasks.push(t); addedCount++; }
+            });
+            (dataToMerge.pairings || []).forEach(p => {
+                if (!existingPairingIds.has(p.id)) { db.pairings.push(p); addedCount++; }
+            });
+
+            db = migrateDB(db);
+            saveDB();
+            render();
+            alert(`✅ ترکیب موفق! ${addedCount} مورد جدید اضافه شد.`);
+        } catch (e) {
+            alert("⚠️ خطا در ترکیب: " + e.message);
+        }
+    };
+    input.click();
+}
+
+function updateDBInfo() {
+    const el = document.getElementById('db-info');
+    if (!el) return;
+    el.innerHTML = `📊 ${db.tasks.length} کار | ${db.goals.length} هدف | ${db.pairings.length} جفت | DB v${db.dbVersion}`;
 }
 
 // ============ TTS ============
@@ -683,13 +1010,36 @@ function speak(persianText, englishText) {
     } catch (e) { console.error("Speak error:", e); }
 }
 
+// ============ پر کردن select ساعت‌ها ============
+function populateHourSelects() {
+    ['check-from-hour', 'check-to-hour', 'feedback-from-hour', 'feedback-to-hour'].forEach(id => {
+        const sel = document.getElementById(id);
+        if (!sel) return;
+        // پاک کن غیر از option اول
+        while (sel.options.length > 1) sel.remove(1);
+        for (let i = 0; i < 24; i++) {
+            const opt = document.createElement('option');
+            opt.value = i;
+            opt.textContent = i.toString().padStart(2, '0') + ':00';
+            sel.appendChild(opt);
+        }
+    });
+}
+
 // ============ ناوبری ============
 function showPage(p) {
     document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
     document.querySelectorAll('nav div').forEach(el => el.classList.remove('active'));
     document.getElementById('page-' + p).classList.add('active');
     document.getElementById('nav-' + p).classList.add('active');
-    if (p === 'settings') { loadSettings(); loadVoices(); updateNotifStatus(); }
+    if (p === 'settings') {
+        populateHourSelects();
+        loadSettings();
+        loadVoices();
+        updateNotifStatus();
+        updateScheduleInfo();
+        updateDBInfo();
+    }
     render();
 }
 
@@ -711,7 +1061,49 @@ function loadSettings() {
     document.getElementById('chat-height').value = db.settings.chatHeight || "380";
     document.getElementById('suggest-count').value = db.settings.suggestCount || "5";
     document.getElementById('notif-enabled').value = db.settings.notifEnabled || "yes";
+    document.getElementById('interval-check').value = db.settings.checkInterval || "2";
+    document.getElementById('check-from-hour').value = db.settings.checkFromHour || "8";
+    document.getElementById('check-to-hour').value = db.settings.checkToHour || "22";
+    document.getElementById('check-method').value = db.settings.checkMethod || "both";
+    document.getElementById('interval-feedback').value = db.settings.feedbackInterval || "4";
+    document.getElementById('feedback-from-hour').value = db.settings.feedbackFromHour || "10";
+    document.getElementById('feedback-to-hour').value = db.settings.feedbackToHour || "21";
+    document.getElementById('feedback-method').value = db.settings.feedbackMethod || "both";
+    updateScheduleInfo();
 }
+
+function updateScheduleInfo() {
+    const checkInt = document.getElementById('interval-check')?.value || db.settings.checkInterval;
+    const checkFrom = document.getElementById('check-from-hour')?.value || db.settings.checkFromHour;
+    const checkTo = document.getElementById('check-to-hour')?.value || db.settings.checkToHour;
+    const checkInfo = document.getElementById('check-schedule-info');
+    if (checkInfo) {
+        if (checkInt === "0") checkInfo.innerText = "⏸ غیرفعال";
+        else {
+            const times = computeScheduledTimes(parseInt(checkInt), parseInt(checkFrom), parseInt(checkTo));
+            checkInfo.innerText = times.length > 0 ? `⏰ ساعت‌های پرسش: ${times.map(t => t.toString().padStart(2,'0')+':00').join(' • ')}` : "⚠️ ساعت شروع و پایان رو تنظیم کن";
+        }
+    }
+    const fbInt = document.getElementById('interval-feedback')?.value || db.settings.feedbackInterval;
+    const fbFrom = document.getElementById('feedback-from-hour')?.value || db.settings.feedbackFromHour;
+    const fbTo = document.getElementById('feedback-to-hour')?.value || db.settings.feedbackToHour;
+    const fbInfo = document.getElementById('feedback-schedule-info');
+    if (fbInfo) {
+        if (fbInt === "0") fbInfo.innerText = "⏸ غیرفعال";
+        else {
+            const times = computeScheduledTimes(parseInt(fbInt), parseInt(fbFrom), parseInt(fbTo));
+            fbInfo.innerText = times.length > 0 ? `⏰ ساعت‌های پرسش: ${times.map(t => t.toString().padStart(2,'0')+':00').join(' • ')}` : "⚠️ ساعت شروع و پایان رو تنظیم کن";
+        }
+    }
+}
+
+function computeScheduledTimes(intervalH, fromH, toH) {
+    if (!intervalH || isNaN(fromH) || isNaN(toH) || fromH >= toH) return [];
+    const times = [];
+    for (let h = fromH; h <= toH; h += intervalH) times.push(h);
+    return times;
+}
+
 function saveSettings() {
     db.settings.key = document.getElementById('api-key-input').value.trim();
     db.settings.nightTime = document.getElementById('nightly-review-time').value;
@@ -719,16 +1111,29 @@ function saveSettings() {
     db.settings.chatHeight = document.getElementById('chat-height').value;
     db.settings.suggestCount = document.getElementById('suggest-count').value;
     db.settings.notifEnabled = document.getElementById('notif-enabled').value;
+    db.settings.checkInterval = document.getElementById('interval-check').value;
+    db.settings.checkFromHour = document.getElementById('check-from-hour').value;
+    db.settings.checkToHour = document.getElementById('check-to-hour').value;
+    db.settings.checkMethod = document.getElementById('check-method').value;
+    db.settings.feedbackInterval = document.getElementById('interval-feedback').value;
+    db.settings.feedbackFromHour = document.getElementById('feedback-from-hour').value;
+    db.settings.feedbackToHour = document.getElementById('feedback-to-hour').value;
+    db.settings.feedbackMethod = document.getElementById('feedback-method').value;
     saveDB();
     applyChatHeight();
+    schedulePeriodicChecks();
     alert("✅ ذخیره شد.");
 }
+
 function testVoice() {
     if (db.settings.voiceMode === 'off') return alert("صدا خاموش است.");
     if (availableVoices.length === 0) loadVoices();
     if (!persianVoice && !englishVoice) return alert("⚠️ صدا نصب نیست.");
     speak("سلام، تست صدا.", "Hello, voice test.");
 }
+
+function triggerCheckinNow() { triggerCheckin(); alert("✅ چک‌این فعال شد. به صفحه اصلی برو."); }
+function triggerFeedbackNow() { triggerFeedback(); alert("✅ فیدبک فعال شد. به صفحه اصلی برو."); }
 
 // ============ نوتیفیکیشن ============
 async function requestNotifPermission() {
@@ -744,9 +1149,15 @@ function updateNotifStatus() {
     const status = Notification.permission;
     el.innerText = status === 'granted' ? "✅ دسترسی داده شده" : status === 'denied' ? "❌ رد شده" : "⏳ هنوز درخواست نشده";
 }
+function sendNotif(title, body, onClickAction) {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    const notif = new Notification(title, { body, requireInteraction: true });
+    notif.onclick = () => { window.focus(); if (onClickAction) onClickAction(); notif.close(); };
+}
 
-// ============ زمان‌سنج مرور شبانه ============
-let nightlyTimer = null;
+// ============ زمان‌سنج‌ها ============
+let nightlyTimer = null, checkTimer = null, feedbackTimer = null;
+
 function scheduleNightlyReview() {
     if (nightlyTimer) clearTimeout(nightlyTimer);
     if (!db.settings.nightTime) return;
@@ -755,19 +1166,165 @@ function scheduleNightlyReview() {
     const target = new Date();
     target.setHours(h, m, 0, 0);
     if (target <= now) target.setDate(target.getDate() + 1);
-    const delay = target - now;
-    nightlyTimer = setTimeout(() => { triggerNightlyReview(); scheduleNightlyReview(); }, delay);
+    nightlyTimer = setTimeout(() => { triggerNightlyReview(); scheduleNightlyReview(); }, target - now);
 }
 
+function schedulePeriodicChecks() {
+    if (checkTimer) clearTimeout(checkTimer);
+    if (feedbackTimer) clearTimeout(feedbackTimer);
+    scheduleNextCheckin();
+    scheduleNextFeedback();
+}
+
+function findNextScheduledTime(intervalH, fromH, toH) {
+    if (!intervalH || intervalH === 0) return null;
+    const times = computeScheduledTimes(intervalH, fromH, toH);
+    if (times.length === 0) return null;
+    const now = new Date();
+    const currentH = now.getHours();
+    const currentM = now.getMinutes();
+    for (const h of times) {
+        if (h > currentH || (h === currentH && currentM === 0)) {
+            const target = new Date();
+            target.setHours(h, 0, 0, 0);
+            return target;
+        }
+    }
+    const target = new Date();
+    target.setDate(target.getDate() + 1);
+    target.setHours(times[0], 0, 0, 0);
+    return target;
+}
+
+function scheduleNextCheckin() {
+    if (checkTimer) clearTimeout(checkTimer);
+    const interval = parseInt(db.settings.checkInterval) || 0;
+    if (interval === 0) return;
+    const fromH = parseInt(db.settings.checkFromHour);
+    const toH = parseInt(db.settings.checkToHour);
+    if (isNaN(fromH) || isNaN(toH)) return;
+    const next = findNextScheduledTime(interval, fromH, toH);
+    if (!next) return;
+    const delay = next - new Date();
+    console.log(`Next checkin in ${(delay/1000/60).toFixed(1)} min at ${next.toLocaleTimeString()}`);
+    checkTimer = setTimeout(() => { triggerCheckin(); scheduleNextCheckin(); }, delay);
+}
+
+function scheduleNextFeedback() {
+    if (feedbackTimer) clearTimeout(feedbackTimer);
+    const interval = parseInt(db.settings.feedbackInterval) || 0;
+    if (interval === 0) return;
+    const fromH = parseInt(db.settings.feedbackFromHour);
+    const toH = parseInt(db.settings.feedbackToHour);
+    if (isNaN(fromH) || isNaN(toH)) return;
+    const next = findNextScheduledTime(interval, fromH, toH);
+    if (!next) return;
+    const delay = next - new Date();
+    console.log(`Next feedback in ${(delay/1000/60).toFixed(1)} min at ${next.toLocaleTimeString()}`);
+    feedbackTimer = setTimeout(() => { triggerFeedback(); scheduleNextFeedback(); }, delay);
+}
+
+// ============ چک‌این ============
+function triggerCheckin() {
+    db.pendingCheckin = true;
+    db.lastCheckinTime = new Date().toISOString();
+    saveDB();
+    const method = db.settings.checkMethod || "both";
+    const question = "الان کجایی و مشغول چه کاری هستی؟";
+    const questionEn = "Where are you now and what are you doing?";
+    if (method === "notif" || method === "both") sendNotif("📍 سیکا - بررسی وضعیت", question, () => answerCheckin());
+    if (method === "voice" || method === "both") speak(question, questionEn);
+    showCheckinBanner();
+    render();
+}
+
+function showCheckinBanner() {
+    const b = document.getElementById('checkin-banner');
+    if (b) b.style.display = db.pendingCheckin ? 'flex' : 'none';
+}
+
+function answerCheckin() {
+    showPage('home');
+    setTimeout(() => {
+        const input = document.getElementById('status-input');
+        if (input) {
+            input.focus();
+            input.placeholder = "📍 الان کجایی و چی کار می‌کنی؟";
+        }
+        addMessage('quick', 'ai', '📍 الان کجایی و مشغول چه کاری هستی؟', 'checkin');
+    }, 200);
+    db.pendingCheckin = false;
+    saveDB();
+    showCheckinBanner();
+}
+
+// ============ فیدبک ============
+function triggerFeedback() {
+    db.pendingFeedback = true;
+    db.lastFeedbackTime = new Date().toISOString();
+    const method = db.settings.feedbackMethod || "both";
+
+    const recentDone = db.tasks.filter(t => {
+        if (!t.done || !t.doneAt) return false;
+        const doneTime = new Date(t.doneAt);
+        const hoursSince = (Date.now() - doneTime) / (1000 * 60 * 60);
+        return hoursSince < 6;
+    });
+    const suggested = db.todayPlan?.suggestedTaskIds?.length > 0 && db.todayPlan?.date === todayStr()
+        ? db.todayPlan.suggestedTaskIds.map(id => db.tasks.find(t => t.id === id)).filter(t => t && !t.done)
+        : [];
+
+    let question, questionEn;
+    if (recentDone.length > 0) {
+        question = "چه خبر؟ کارهایی که اخیراً انجام دادی چطور پیش رفت؟";
+        questionEn = "How did the recent tasks go?";
+    } else if (suggested.length > 0) {
+        const sampleTask = suggested[0].title;
+        question = `سراغ کارهای امروز رفتی؟ مثلاً "${sampleTask}" چطور پیش می‌ره؟`;
+        questionEn = `Did you start today's tasks? How is "${sampleTask}" going?`;
+    } else {
+        question = "چه خبر؟ کارها چطور پیش می‌ره؟";
+        questionEn = "How are things going?";
+    }
+
+    if (method === "notif" || method === "both") sendNotif("📊 سیکا - فیدبک", question, () => answerFeedback());
+    if (method === "voice" || method === "both") speak(question, questionEn);
+
+    db._pendingFeedbackQuestion = question;
+    saveDB();
+    showFeedbackBanner();
+    render();
+}
+
+function showFeedbackBanner() {
+    const b = document.getElementById('feedback-banner');
+    if (b) b.style.display = db.pendingFeedback ? 'flex' : 'none';
+}
+
+function answerFeedback() {
+    showPage('home');
+    setTimeout(() => {
+        const input = document.getElementById('chat-input');
+        if (input) {
+            input.focus();
+            input.placeholder = "📊 درباره عملکردت بگو...";
+        }
+        const question = db._pendingFeedbackQuestion || "کارها چطور پیش رفت؟";
+        addMessage('deep', 'ai', `📊 ${question}`, 'feedback-req');
+    }, 200);
+    db.pendingFeedback = false;
+    delete db._pendingFeedbackQuestion;
+    saveDB();
+    showFeedbackBanner();
+}
+
+// ============ مرور شبانه ============
 function triggerNightlyReview() {
     if (db.lastNightlyReviewDate === todayStr()) return;
     if (db.settings.notifEnabled === 'yes' && 'Notification' in window && Notification.permission === 'granted') {
-        const notif = new Notification('🌙 سیکا - مرور شبانه', {
-            body: 'وقتشه برای فردا برنامه‌ریزی کنیم.',
-            requireInteraction: true
-        });
-        notif.onclick = () => { window.focus(); openNightlyReview(); notif.close(); };
+        sendNotif('🌙 سیکا - مرور شبانه', 'وقتشه برای فردا برنامه‌ریزی کنیم.', () => openNightlyReview());
     }
+    speak("وقت مرور شبانه است.", "Time for nightly review.");
     showNightlyBanner();
 }
 
@@ -785,7 +1342,6 @@ function showNightlyBanner() {
     b.style.display = 'none';
 }
 
-// ============ مرور شبانه - Modal ============
 function openNightlyReview() {
     document.getElementById('nightly-modal').classList.add('active');
     document.getElementById('nightly-step-1').style.display = 'block';
@@ -803,10 +1359,8 @@ async function submitNightlyReview() {
     const hours = parseInt(document.getElementById('tomorrow-hours').value);
     const energy = document.getElementById('tomorrow-energy').value;
     const notes = document.getElementById('tomorrow-notes').value.trim();
-
     document.getElementById('nightly-step-1').style.display = 'none';
     document.getElementById('nightly-step-2').style.display = 'block';
-
     db.todayPlan = { date: tomorrowStr(), context: selectedCtx, availableHours: hours, energyLevel: energy, notes, suggestedTaskIds: [] };
     if (notes) await extractTasksFromNotes(notes);
     await generateTodaySuggestions();
@@ -820,7 +1374,7 @@ async function submitNightlyReview() {
 
 async function extractTasksFromNotes(notes) {
     if (!db.settings.key) return;
-    const prompt = `از این متن، کارهایی که باید فردا انجام بشن رو استخراج کن. برای هر کار، energy و time و context رو هم تخمین بزن:
+    const prompt = `از این متن کارهایی که باید فردا انجام بشن رو استخراج کن:
 "${notes}"
 
 JSON:
@@ -855,41 +1409,30 @@ async function generateTodaySuggestions() {
     if (!db.settings.key || db.tasks.length === 0) return;
     const plan = db.todayPlan;
     const count = parseInt(db.settings.suggestCount) || 5;
-
     const activeTasks = db.tasks.filter(t => !t.done);
     const completedIds = new Set(db.tasks.filter(t => t.done).map(t => t.id));
-
     const eligible = activeTasks.filter(t => {
         if (t.dependsOn?.length > 0 && !t.dependsOn.every(id => completedIds.has(id))) return false;
         if (t.context?.length > 0 && !t.context.some(c => plan.context.includes(c))) return false;
         return true;
     });
-
-    if (eligible.length === 0) {
-        db.todayPlan.suggestedTaskIds = [];
-        return;
-    }
+    if (eligible.length === 0) { db.todayPlan.suggestedTaskIds = []; return; }
 
     const prompt = `تو سیکا هستی. کاربر فردا:
 - بستر: ${plan.context.join(', ')}
 - ساعات آزاد: ${plan.availableHours}
 - انرژی: ${plan.energyLevel}
 
-لیست کارهای واجد شرایط:
-${eligible.map(t => `[${t.id}] ${t.title} | اولویت:${t.priority} | انرژی:${t.energyRequired||'medium'} | زمان:${t.estimatedMinutes||15}دقیقه | context:${t.context?.join(',')} | deadline:${t.deadline||'ندارد'}`).join('\n')}
+لیست:
+${eligible.map(t => `[${t.id}] ${t.title} | اولویت:${t.priority} | انرژی:${t.energyRequired||'medium'} | زمان:${t.estimatedMinutes||15}د`).join('\n')}
 
-بهترین ${count} کار:
-- فوریت + اهمیت بالاتر
-- انرژی موردنیاز با انرژی موجود match کنه
-- ددلاین نزدیک‌تر اولویت
-- جمع زمان‌ها با ساعات آزاد سازگار
+بهترین ${count} کار رو انتخاب کن.
 
-❗ JSON:
+JSON:
 {
   "selectedTaskIds": ["id1", ...],
   "reasoning": "یک جمله فارسی"
 }`;
-
     try {
         const data = await callGemini(prompt);
         if (data?.selectedTaskIds) {
@@ -900,15 +1443,13 @@ ${eligible.map(t => `[${t.id}] ${t.title} | اولویت:${t.priority} | انر�
 }
 
 async function rebuildTodayPlan() {
-    if (!db.todayPlan.context || db.todayPlan.context.length === 0) {
-        return alert("ابتدا یک مرور شبانه انجام بده.");
-    }
+    if (!db.todayPlan.context || db.todayPlan.context.length === 0) return alert("ابتدا یک مرور شبانه انجام بده.");
     await generateTodaySuggestions();
     saveDB();
     render();
 }
 
-// ============ ✨ Idle Time Modal ============
+// ============ Idle Time ============
 function openIdleModal() {
     document.getElementById('idle-modal').classList.add('active');
     document.getElementById('idle-step-1').style.display = 'block';
@@ -920,62 +1461,41 @@ async function generateIdleSuggestions() {
     const activity = document.getElementById('idle-current-activity').value.trim();
     const time = parseInt(document.getElementById('idle-time').value);
     const context = document.getElementById('idle-context').value;
-
     if (!activity) return alert("لطفا بگو الان داری چیکار می‌کنی.");
     if (!db.settings.key) return alert("⚠️ ابتدا API Key.");
-
     document.getElementById('idle-step-1').style.display = 'none';
     document.getElementById('idle-step-2').style.display = 'block';
-
     const activeTasks = db.tasks.filter(t => !t.done);
     const completedIds = new Set(db.tasks.filter(t => t.done).map(t => t.id));
-
-    // فیلتر اولیه: کارهای سبک، قابل موازی‌سازی، context match
     const eligible = activeTasks.filter(t => {
         if (t.dependsOn?.length > 0 && !t.dependsOn.every(id => completedIds.has(id))) return false;
         if (t.context?.length > 0 && !t.context.includes(context)) return false;
         if ((t.estimatedMinutes || 15) > time) return false;
         return true;
     });
-
-    // پیدا کردن pairing های قبلی مرتبط
     const relevantPairings = db.pairings.filter(p =>
-        p.mainActivity && (
-            activity.includes(p.mainActivity) ||
-            p.mainActivity.includes(activity)
-        )
+        p.mainActivity && (activity.includes(p.mainActivity) || p.mainActivity.includes(activity))
     );
-
     const prompt = `کاربر ADHD داره و الان مشغول "${activity}" هست. ${time} دقیقه وقت خالی داره. context: ${context}.
 
-کارهای واجد شرایط (کارهای سبک که با ${activity} موازی قابل انجامه):
-${eligible.length > 0 ? eligible.map(t => `[${t.id}] ${t.title} | انرژی:${t.energyRequired||'medium'} | زمان:${t.estimatedMinutes||15}دقیقه`).join('\n') : 'هیچ کار مناسبی در لیست نیست'}
+کارهای واجد شرایط:
+${eligible.length > 0 ? eligible.map(t => `[${t.id}] ${t.title} | انرژی:${t.energyRequired||'medium'} | زمان:${t.estimatedMinutes||15}د`).join('\n') : 'هیچ'}
 
-تجربه‌های قبلی کاربر:
-${relevantPairings.length > 0 ? relevantPairings.map(p => `موقع ${p.mainActivity} خوب بوده: ${p.companions.join(', ')}`).join('\n') : 'تجربه قبلی ندارد'}
+تجربه قبلی:
+${relevantPairings.length > 0 ? relevantPairings.map(p => `موقع ${p.mainActivity}: ${p.companions.join(', ')}`).join('\n') : 'هیچ'}
 
-وظیفه:
-1. یه ترکیب پیشنهاد بده: "${activity} + کار از لیست + شاید یه فعالیت پس‌زمینه (پادکست/موسیقی)"
-2. اگه کاری در لیست نیست، فعالیت‌های ذهنی-سبک پیشنهاد بده (مرور برنامه، نوشتن ایده، تماس کوتاه با کسی، یاد گرفتن چیز کوچیک)
-3. حواست به ADHD باشه: کارهای سنگین که ذهن رو درگیر می‌کنه پیشنهاد نده
+ترکیب پیشنهاد بده.
 
-❗ JSON:
+JSON:
 {
   "bundle": {
-    "title": "عنوان جذاب ترکیب",
-    "items": [
-      "آیتم اول (همون activity فعلی کاربر)",
-      "آیتم دوم (یه کار از لیست یا پیشنهاد جدید)",
-      "آیتم سوم اختیاری (پادکست/موسیقی/...)"
-    ],
-    "selectedTaskIds": ["taskIds اگه از لیست انتخاب کردی"],
-    "tip": "یه نکته‌ی کوتاه فارسی برای موفقیت این ترکیب"
+    "title": "عنوان جذاب",
+    "items": ["${activity}", "آیتم دوم", "آیتم سوم اختیاری"],
+    "selectedTaskIds": [...],
+    "tip": "نکته فارسی کوتاه"
   },
-  "alternatives": [
-    { "title": "پیشنهاد جایگزین کوتاه", "taskId": "اگه از لیسته" }
-  ]
+  "alternatives": [{ "title": "...", "taskId": "..." }]
 }`;
-
     try {
         const data = await callGemini(prompt);
         renderIdleSuggestions(data, activity, time);
@@ -989,15 +1509,11 @@ ${relevantPairings.length > 0 ? relevantPairings.map(p => `موقع ${p.mainActi
 
 function renderIdleSuggestions(data, activity, time) {
     const el = document.getElementById('idle-suggestions');
-    if (!data?.bundle) {
-        el.innerHTML = '<div class="empty-state">پیشنهادی پیدا نشد.</div>';
-        return;
-    }
-
+    if (!data?.bundle) { el.innerHTML = '<div class="empty-state">پیشنهادی پیدا نشد.</div>'; return; }
     const bundle = data.bundle;
     let html = `
         <div class="idle-bundle">
-            <div class="idle-bundle-title">✨ ${escapeHtml(bundle.title || 'ترکیب پیشنهادی')}</div>
+            <div class="idle-bundle-title">✨ ${escapeHtml(bundle.title || 'ترکیب')}</div>
             ${bundle.items.map((item, i) => `
                 <div class="idle-task-row">
                     <span style="color:var(--orange); font-weight:bold;">${i+1}.</span>
@@ -1013,7 +1529,6 @@ function renderIdleSuggestions(data, activity, time) {
             </div>
         </div>
     `;
-
     if (data.alternatives?.length > 0) {
         html += `<div style="margin-top:15px; font-size:0.75rem; color:var(--muted);">یا این‌ها:</div>`;
         data.alternatives.forEach(alt => {
@@ -1026,113 +1541,77 @@ function renderIdleSuggestions(data, activity, time) {
     el.innerHTML = html;
 }
 
-// ✨ ثبت feedback موفقیت ترکیب
 function markIdleSuccess(activity, itemsJsonStr) {
     try {
         const items = JSON.parse(itemsJsonStr.replace(/&#39;/g, "'"));
-        // جدا کردن activity اصلی از باقی موارد
-        const companions = items.slice(1); // اولی همون activity فعلیه
-
-        // پیدا کردن یا ساختن pairing
+        const companions = items.slice(1);
         let pairing = db.pairings.find(p => p.mainActivity === activity);
         if (!pairing) {
             pairing = { id: generateId(), mainActivity: activity, companions: [], createdAt: new Date().toISOString() };
             db.pairings.push(pairing);
         }
-        // اضافه کردن companion های جدید
-        companions.forEach(c => {
-            if (c && !pairing.companions.includes(c)) {
-                pairing.companions.push(c);
-            }
-        });
+        companions.forEach(c => { if (c && !pairing.companions.includes(c)) pairing.companions.push(c); });
         pairing.lastUsed = new Date().toISOString();
         saveDB();
-        document.getElementById('idle-suggestions').innerHTML = `<div style="text-align:center; padding:15px; color:var(--green);">✅ یاد گرفتم! دفعه بعد هم پیشنهاد می‌دم.</div>`;
+        document.getElementById('idle-suggestions').innerHTML = `<div style="text-align:center; padding:15px; color:var(--green);">✅ یاد گرفتم!</div>`;
         setTimeout(() => render(), 2000);
     } catch (e) { console.error("Feedback error:", e); }
 }
 
-function dismissIdle() {
-    document.getElementById('idle-suggestions').innerHTML = '';
-}
+function dismissIdle() { document.getElementById('idle-suggestions').innerHTML = ''; }
 
-// ============ اهداف با Chat ============
+// ============ اهداف ============
 async function addGoalAndStartChat() {
     const title = document.getElementById('new-goal-title').value.trim();
     const desc = document.getElementById('new-goal-desc').value.trim();
     if (!title) return alert("عنوان هدف رو وارد کن.");
-    if (!db.settings.key) return alert("⚠️ ابتدا API Key رو وارد کن.");
-
+    if (!db.settings.key) return alert("⚠️ ابتدا API Key.");
     const goalId = generateId();
-    db.goals.push({
-        id: goalId, title, description: desc,
-        status: 'in-discussion', // در حال گفتگو با AI
-        createdAt: new Date().toISOString(), progress: 0
-    });
-
-    // پیام اولیه به chat
+    db.goals.push({ id: goalId, title, description: desc, status: 'in-discussion', createdAt: new Date().toISOString(), progress: 0 });
     db.pendingGoalChat = goalId;
     document.getElementById('new-goal-title').value = "";
     document.getElementById('new-goal-desc').value = "";
     saveDB();
-
-    // یه پیام شروع به deep chat اضافه می‌کنیم
     const introPrompt = `هدف بلندمدت جدید: "${title}"${desc ? ` - ${desc}` : ''}`;
     db.chatHistory.deep.push({ role: 'user', text: `🎯 ${introPrompt}` });
     saveDB();
-
     showPage('home');
-
-    // AI شروع به گفتگو می‌کنه
     addMessage('deep', 'ai', '⏳ در حال آماده‌سازی...');
     const aiPrompt = `کاربر این هدف بلندمدت رو ثبت کرده: "${title}"${desc ? ` (${desc})` : ''}.
 
-تو سیکا هستی، مربی شخصی. کاربر ADHD داره. می‌خوای کمکش کنی این هدف رو به subtask های کوچیک، مشخص و عملی تبدیل کنی.
-
-به جای تجزیه فوری، اول این سوالات رو ازش بپرس (در یک پیام، گرم و دوستانه، فارسی):
-1. چه تجربه‌ی قبلی با این موضوع داری؟
+تو سیکا هستی. کاربر ADHD داره. اول این سوالات رو بپرس:
+1. چه تجربه‌ی قبلی داری؟
 2. تا چه زمانی می‌خوای بهش برسی؟
-3. چقدر در هفته می‌تونی روش کار کنی؟
-4. ترسی یا چالشی هست که فکر می‌کنی پیش بیاد؟
+3. چقدر در هفته می‌تونی کار کنی؟
+4. چالشی پیش‌بینی می‌کنی؟
 
 JSON:
 {
   "reply": "پاسخ گرم با ۴ سوال",
-  "replyEnglish": "English version",
-  "summary": "شروع گفتگو درباره هدف X",
+  "replyEnglish": "English",
+  "summary": "شروع گفتگو",
   "mood": "متمرکز"
 }`;
     try {
         const parsed = await callGemini(aiPrompt);
         db.chatHistory.deep.pop();
-        const reply = parsed.reply || `بیا درباره‌ی "${title}" بیشتر صحبت کنیم. چه تجربه‌ای داری؟`;
+        const reply = parsed.reply || `بیا درباره‌ی "${title}" بیشتر صحبت کنیم.`;
         addMessage('deep', 'ai', reply);
         speak(reply, parsed.replyEnglish || "");
     } catch (e) {
         db.chatHistory.deep.pop();
-        addMessage('deep', 'ai', `بیا درباره‌ی "${title}" بیشتر صحبت کنیم. چه تجربه‌ای با این موضوع داری؟ چقدر می‌خوای روش وقت بذاری؟`);
+        addMessage('deep', 'ai', `بیا درباره‌ی "${title}" بیشتر صحبت کنیم. تجربه‌ت چیه؟`);
     }
 }
 
 async function finalizeGoalBreakdown(goalId) {
     const goal = db.goals.find(g => g.id === goalId);
-    if (!goal) return;
-
+    if (!goal) return 0;
     const recentChat = db.chatHistory.deep.slice(-10).map(m => `${m.role}: ${m.text}`).join('\n');
-
-    const prompt = `بر اساس گفتگوی زیر، هدف "${goal.title}" رو به subtask های مشخص تجزیه کن.
+    const prompt = `بر اساس گفتگو، هدف "${goal.title}" رو به subtask تجزیه کن.
 
 گفتگو:
 ${recentChat}
-
-برای هر subtask:
-- title (مشخص و عملی)
-- priority (high/medium/low)
-- context (home/outdoor/online/phone)
-- energyRequired (high/medium/low)
-- estimatedMinutes (5/15/30/60/120)
-- parallelizable (true اگه میشه همراه کار دیگه انجام داد)
-- order (ترتیب)
 
 JSON:
 {
@@ -1140,7 +1619,6 @@ JSON:
     { "title": "...", "priority": "...", "context": "...", "energyRequired": "...", "estimatedMinutes": 30, "parallelizable": false, "order": 1 }
   ]
 }`;
-
     try {
         const data = await callGemini(prompt);
         if (data?.subtasks) {
@@ -1151,17 +1629,15 @@ JSON:
                 const taskId = generateId();
                 newIds.push(taskId);
                 db.tasks.push({
-                    id: taskId, title: s.title, type: 'subtask',
-                    goalId: goalId, priority: s.priority || 'medium',
-                    urgency: 'normal', context: [s.context || 'home'],
+                    id: taskId, title: s.title, type: 'subtask', goalId: goalId,
+                    priority: s.priority || 'medium', urgency: 'normal',
+                    context: [s.context || 'home'],
                     dependsOn: idx > 0 ? [newIds[idx-1]] : [],
                     deadline: null,
                     energyRequired: s.energyRequired || 'medium',
                     estimatedMinutes: s.estimatedMinutes || 30,
-                    parallelizable: s.parallelizable || false,
-                    interruptible: true,
-                    done: false, createdAt: new Date().toISOString(),
-                    source: 'goal-breakdown'
+                    parallelizable: s.parallelizable || false, interruptible: true,
+                    done: false, createdAt: new Date().toISOString(), source: 'goal-breakdown'
                 });
             });
             goal.status = 'active';
@@ -1174,7 +1650,7 @@ JSON:
 }
 
 function deleteGoal(id) {
-    if (!confirm("این هدف و subtask هاش حذف بشن؟")) return;
+    if (!confirm("هدف حذف بشه؟")) return;
     db.tasks = db.tasks.filter(t => t.goalId !== id);
     db.goals = db.goals.filter(g => g.id !== id);
     saveDB();
@@ -1221,8 +1697,7 @@ function quickAddTask() {
     db.tasks.push({
         id: generateId(), title, type: 'oneshot',
         priority, urgency: 'normal',
-        context: [context], dependsOn: [],
-        deadline: null,
+        context: [context], dependsOn: [], deadline: null,
         energyRequired: 'medium', estimatedMinutes: 15,
         parallelizable: false, interruptible: true,
         done: false, createdAt: new Date().toISOString(), source: 'quick-add'
@@ -1325,50 +1800,37 @@ async function handleAI(type) {
     const userText = document.getElementById(inputId).value.trim();
     if (!userText) return;
     if (!db.settings.key) return addMessage(type, 'ai', "⚠️ ابتدا API Key.");
-
     const timestamp = new Date().toLocaleTimeString('it-IT');
     addMessage(type, 'user', `(${timestamp}) ${userText}`);
     document.getElementById(inputId).value = "";
     addMessage(type, 'ai', '⏳ در حال تحلیل...');
-
     const recentMsgs = db.chatHistory[type].slice(-8).map(m => `${m.role}: ${m.text}`).join('\n');
     const activeTasks = db.tasks.filter(t => !t.done).slice(0, 10).map(t => `- ${t.title}`).join('\n') || 'هیچ';
     const knownPairings = db.pairings.slice(0, 10).map(p => `${p.mainActivity}: ${p.companions.join(', ')}`).join('\n') || 'هیچ';
-
-    // اگه گفتگوی هدف در جریانه
     const goalContext = db.pendingGoalChat ? db.goals.find(g => g.id === db.pendingGoalChat) : null;
-    const goalNote = goalContext ?
-        `\n\n⚠️ توجه: کاربر در حال گفتگو درباره هدف "${goalContext.title}" است. اگر کاربر گفت "بریم تجزیه کنیم" یا اطلاعات کافی داده، در reply پیشنهاد بده که حالا تجزیه کنیم و در فیلد "readyToBreakdown" مقدار true بزن.` : '';
-
-    const systemPrompt = `تو سیکا، مربی شخصی هستی. کاربر ADHD داره، پس:
-- پاسخ‌ها کوتاه و عملی
-- کارهای سبک رو با کارهای سنگین تفکیک کن
-- اگه گفت "موقع X خوب بود Y رو کنارش انجام دادم"، در فیلد newPairing ذخیره کن
-- اگه گفت کاری انجام بده، در newTasks استخراج کن
+    const goalNote = goalContext ? `\n\n⚠️ کاربر در حال گفتگو درباره هدف "${goalContext.title}" است. اگر اطلاعات کافی داده، readyToBreakdown: true بزن.` : '';
+    const systemPrompt = `تو سیکا، مربی شخصی هستی. کاربر ADHD داره.
 
 نوع: ${type === 'quick' ? 'گزارش سریع' : 'مشورت عمیق'}
 کارهای فعال:
 ${activeTasks}
-
-جفت‌های یادگرفته‌شده:
+جفت‌ها:
 ${knownPairings}
-
-تاریخچه چت:
+تاریخچه:
 ${recentMsgs}${goalNote}
 
 پیام: "${userText}"
 
-❗ JSON:
+JSON:
 {
-  "reply": "پاسخ فارسی گرم و کوتاه (2-4 جمله)",
+  "reply": "پاسخ فارسی گرم (2-4 جمله)",
   "replyEnglish": "English",
-  "summary": "خلاصه وضعیت",
+  "summary": "خلاصه",
   "mood": "یک کلمه",
   "newTasks": [{ "title": "...", "priority": "...", "context": "...", "energyRequired": "low|medium|high", "estimatedMinutes": 5|15|30|60, "parallelizable": false }],
-  "newPairing": { "mainActivity": "آشپزی", "companion": "ایمیل جواب دادن" } یا null,
+  "newPairing": { "mainActivity": "X", "companion": "Y" } یا null,
   "readyToBreakdown": false
 }`;
-
     try {
         const parsed = await callGemini(systemPrompt);
         db.chatHistory[type].pop();
@@ -1377,27 +1839,21 @@ ${recentMsgs}${goalNote}
         speak(reply, parsed.replyEnglish || "");
         if (parsed.summary) db.lastSummary = parsed.summary;
         if (parsed.mood) db.lastMood = parsed.mood;
-
-        // newTasks
         if (Array.isArray(parsed.newTasks)) {
             parsed.newTasks.forEach(t => {
                 if (t?.title) {
                     db.tasks.push({
                         id: generateId(), title: t.title, type: 'oneshot',
                         priority: t.priority || 'medium', urgency: 'normal',
-                        context: [t.context || 'home'], dependsOn: [],
-                        deadline: null,
+                        context: [t.context || 'home'], dependsOn: [], deadline: null,
                         energyRequired: t.energyRequired || 'medium',
                         estimatedMinutes: t.estimatedMinutes || 15,
-                        parallelizable: t.parallelizable || false,
-                        interruptible: true,
+                        parallelizable: t.parallelizable || false, interruptible: true,
                         done: false, createdAt: new Date().toISOString(), source: 'chat'
                     });
                 }
             });
         }
-
-        // ✨ newPairing - یادگیری از تجربه
         if (parsed.newPairing?.mainActivity && parsed.newPairing?.companion) {
             const main = parsed.newPairing.mainActivity;
             const comp = parsed.newPairing.companion;
@@ -1411,15 +1867,10 @@ ${recentMsgs}${goalNote}
                 pairing.lastUsed = new Date().toISOString();
             }
         }
-
-        // اگه آماده‌ی تجزیه‌ی هدفه
         if (parsed.readyToBreakdown && db.pendingGoalChat) {
             const count = await finalizeGoalBreakdown(db.pendingGoalChat);
-            if (count > 0) {
-                addMessage(type, 'ai', `✅ ${count} زیرکار ساخته شد. می‌تونی توی صفحه‌ی "کارها" ببینی.`);
-            }
+            if (count > 0) addMessage(type, 'ai', `✅ ${count} زیرکار ساخته شد.`);
         }
-
         saveDB();
         render();
     } catch (e) {
@@ -1428,8 +1879,8 @@ ${recentMsgs}${goalNote}
     }
 }
 
-function addMessage(type, role, text) {
-    db.chatHistory[type].push({ role, text });
+function addMessage(type, role, text, msgClass) {
+    db.chatHistory[type].push({ role, text, msgClass });
     if (db.chatHistory[type].length > 50) db.chatHistory[type].shift();
     saveDB();
     render();
@@ -1441,21 +1892,16 @@ function renderTaskItem(t, opts = {}) {
     const priorityLabel = { high: 'فوری', medium: 'متوسط', low: 'کم' }[t.priority] || 'متوسط';
     const ctxLabels = { home: '🏠', outdoor: '🌆', online: '💻', phone: '📞' };
     const energyLabels = { high: '🔥', medium: '🌊', low: '💨' };
-
     const ctxTags = (t.context || []).map(c => `<span class="task-tag ctx-${c}">${ctxLabels[c] || c}</span>`).join('');
     const energyTag = t.energyRequired ? `<span class="task-tag energy-${t.energyRequired}">${energyLabels[t.energyRequired]}</span>` : '';
     const timeTag = t.estimatedMinutes ? `<span class="task-tag time-tag">⏱${t.estimatedMinutes}د</span>` : '';
     const parallelTag = t.parallelizable ? `<span class="task-tag parallel-tag">🔗 موازی</span>` : '';
-
     const goalName = t.goalId ? db.goals.find(g => g.id === t.goalId)?.title : null;
     const goalTag = goalName ? `<span class="task-tag type-goal">🎯 ${escapeHtml(goalName)}</span>` : '';
-
     const completedIds = new Set(db.tasks.filter(x => x.done).map(x => x.id));
     const blocked = (t.dependsOn || []).some(id => !completedIds.has(id));
-    const blockedTag = blocked ? `<span class="task-tag blocked-tag">🔒 منتظر پیش‌نیاز</span>` : '';
-
+    const blockedTag = blocked ? `<span class="task-tag blocked-tag">🔒 منتظر</span>` : '';
     const deadlineTag = t.deadline ? `<span class="task-tag deadline-tag">📅 ${t.deadline}</span>` : '';
-
     return `
         <div class="task-item ${t.done ? 'done' : ''} ${blocked && !t.done ? 'blocked' : ''}">
             ${showCheckbox ? `<div class="task-checkbox ${t.done ? 'checked' : ''}" onclick="toggleTask('${t.id}')">${t.done ? '✓' : ''}</div>` : ''}
@@ -1474,33 +1920,27 @@ function renderTaskItem(t, opts = {}) {
 }
 
 function render() {
-    // چت‌ها
     ['quick', 'deep'].forEach(type => {
         const log = document.getElementById(type + '-chat-log');
         if (log) {
             log.innerHTML = db.chatHistory[type]
-                .map(m => `<div class="msg ${m.role === 'user' ? 'user' : 'ai'}">${escapeHtml(m.text)}</div>`).join('');
+                .map(m => `<div class="msg ${m.role === 'user' ? 'user' : 'ai'} ${m.msgClass || ''}">${escapeHtml(m.text)}</div>`).join('');
             requestAnimationFrame(() => log.scrollTop = log.scrollHeight);
         }
     });
-
     const summaryEl = document.getElementById('strategic-summary');
     if (summaryEl) summaryEl.innerText = db.lastSummary || "منتظر گزارش شما هستم...";
     const moodEl = document.getElementById('mood-indicator');
     if (moodEl) moodEl.innerText = db.lastMood ? `🎭 حال: ${db.lastMood}` : "";
-
     showNightlyBanner();
-
+    showCheckinBanner();
+    showFeedbackBanner();
     const ctxEl = document.getElementById('today-context-info');
     if (ctxEl && db.todayPlan?.date === todayStr() && db.todayPlan.context?.length > 0) {
         const ctxLabels = { home: '🏠 خونه', outdoor: '🌆 بیرون', online: '💻 آنلاین', phone: '📞 تلفن' };
         const labels = db.todayPlan.context.map(c => ctxLabels[c]).join('، ');
         ctxEl.innerHTML = `📍 ${labels} | ⏰ ${db.todayPlan.availableHours} ساعت`;
-    } else if (ctxEl) {
-        ctxEl.innerHTML = '';
-    }
-
-    // پیشنهادی‌های امروز
+    } else if (ctxEl) ctxEl.innerHTML = '';
     const homeTasks = document.getElementById('home-task-list');
     if (homeTasks) {
         let suggestedTasks = [];
@@ -1513,7 +1953,7 @@ function render() {
                 .slice(0, 5);
         }
         if (suggestedTasks.length === 0) {
-            homeTasks.innerHTML = `<div class="empty-state">هنوز کاری ثبت نشده.<br>برنامه‌ریزی فردا رو انجام بده 👇</div>`;
+            homeTasks.innerHTML = `<div class="empty-state">هنوز کاری ثبت نشده.</div>`;
         } else {
             homeTasks.innerHTML = suggestedTasks.map(t => renderTaskItem(t, { showDelete: false })).join('');
         }
@@ -1528,12 +1968,10 @@ function render() {
             `;
         }
     }
-
-    // اهداف
     const goalsList = document.getElementById('goals-list');
     if (goalsList) {
         if (db.goals.length === 0) {
-            goalsList.innerHTML = `<div class="card"><div class="empty-state">هنوز هدفی ثبت نشده.</div></div>`;
+            goalsList.innerHTML = `<div class="card"><div class="empty-state">هنوز هدفی نیست.</div></div>`;
         } else {
             goalsList.innerHTML = db.goals.map(g => {
                 const progress = calculateGoalProgress(g.id);
@@ -1555,8 +1993,6 @@ function render() {
             }).join('');
         }
     }
-
-    // همه کارها با فیلتر
     const lt = document.getElementById('lt-list-detailed');
     if (lt) {
         const filterStatus = document.getElementById('filter-status')?.value || 'active';
@@ -1567,9 +2003,8 @@ function render() {
         else if (filterStatus === 'done') filtered = filtered.filter(t => t.done);
         if (filterContext !== 'all') filtered = filtered.filter(t => t.context?.includes(filterContext));
         if (filterEnergy !== 'all') filtered = filtered.filter(t => t.energyRequired === filterEnergy);
-
         if (filtered.length === 0) {
-            lt.innerHTML = `<div class="card"><div class="empty-state">کاری با این فیلتر پیدا نشد.</div></div>`;
+            lt.innerHTML = `<div class="card"><div class="empty-state">چیزی پیدا نشد.</div></div>`;
         } else {
             const sorted = filtered.sort((a, b) => {
                 if (a.done !== b.done) return a.done ? 1 : -1;
@@ -1579,12 +2014,10 @@ function render() {
             lt.innerHTML = `<div class="card">${sorted.map(t => renderTaskItem(t, { showDelete: true })).join('')}</div>`;
         }
     }
-
-    // ✨ تب جفت‌ها
     const pairingsList = document.getElementById('pairings-list');
     if (pairingsList) {
         if (db.pairings.length === 0) {
-            pairingsList.innerHTML = `<div class="empty-state">هنوز جفتی یاد نگرفتم.<br>وقتی موقع کاری، کار دیگه‌ای کنارش انجام دادی، توی چت بگو.</div>`;
+            pairingsList.innerHTML = `<div class="empty-state">هنوز جفتی یاد نگرفتم.</div>`;
         } else {
             pairingsList.innerHTML = db.pairings.map(p => `
                 <div style="background:#000; border:1px solid var(--orange); border-radius:12px; padding:12px; margin-bottom:8px;">
@@ -1603,12 +2036,15 @@ function render() {
 }
 
 function clearAll() {
-    if (confirm("⚠️ همه داده‌ها پاک شوند؟")) {
-        localStorage.removeItem('syca_db_v19');
+    if (confirm("⚠️ همه داده‌ها پاک شوند؟\n\nپیشنهاد می‌کنم اول دکمه «📥 دانلود پشتیبان» رو بزنی.")) {
+        localStorage.removeItem('syca_db');
+        // پاک کردن کلیدهای قدیمی هم
+        ['syca_db_v18', 'syca_db_v19', 'syca_db_v20'].forEach(k => localStorage.removeItem(k));
         location.reload();
     }
 }
 
+// ============ شروع ============
 window.onload = () => {
     applyChatHeight();
     render();
@@ -1616,7 +2052,16 @@ window.onload = () => {
     setTimeout(loadVoices, 500);
     setTimeout(loadVoices, 1500);
     scheduleNightlyReview();
+    schedulePeriodicChecks();
     setTimeout(showNightlyBanner, 1000);
+    // event listeners برای تغییر تنظیمات ساعت
+    setTimeout(() => {
+        ['interval-check', 'check-from-hour', 'check-to-hour', 'interval-feedback', 'feedback-from-hour', 'feedback-to-hour']
+            .forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.addEventListener('change', updateScheduleInfo);
+            });
+    }, 100);
 };
 </script>
 </body>
