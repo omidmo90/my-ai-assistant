@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Syca v21 | Migration-Safe</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#3b82f6">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Syca">
+    <link rel="apple-touch-icon" href="icon-192.png">
     <style>
         :root {
             --primary: #8b5cf6; --bg: #0a0a0c; --card: #16161e; --text: #f4f4f5;
@@ -1151,10 +1157,34 @@ function updateNotifStatus() {
 }
 function sendNotif(title, body, onClickAction) {
     if (!('Notification' in window) || Notification.permission !== 'granted') return;
-    const notif = new Notification(title, { body, requireInteraction: true });
-    notif.onclick = () => { window.focus(); if (onClickAction) onClickAction(); notif.close(); };
-}
 
+    // اول تلاش از طریق Service Worker (پایدارتر)
+    if (swRegistration && swRegistration.active) {
+        swRegistration.active.postMessage({
+            type: 'SHOW_NOTIFICATION',
+            payload: {
+                title, body,
+                tag: 'syca-' + Date.now(),
+                url: './'
+            }
+        });
+        return;
+    }
+
+    // fallback به نوتیفیکیشن کلاسیک
+    const notif = new Notification(title, {
+        body,
+        icon: 'icon-192.png',
+        badge: 'icon-192.png',
+        requireInteraction: true,
+        dir: 'rtl'
+    });
+    notif.onclick = () => {
+        window.focus();
+        if (onClickAction) onClickAction();
+        notif.close();
+    };
+}
 // ============ زمان‌سنج‌ها ============
 let nightlyTimer = null, checkTimer = null, feedbackTimer = null;
 
@@ -2045,6 +2075,18 @@ function clearAll() {
 }
 
 // ============ شروع ============
+    // ============ PWA: ثبت Service Worker ============
+let swRegistration = null;
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('service-worker.js')
+            .then(reg => {
+                swRegistration = reg;
+                console.log('✅ SW registered:', reg.scope);
+            })
+            .catch(err => console.error('❌ SW failed:', err));
+    });
+}
 window.onload = () => {
     applyChatHeight();
     render();
