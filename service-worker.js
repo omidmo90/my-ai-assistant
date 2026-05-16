@@ -1,8 +1,7 @@
-// Syca Service Worker v3 - Offline-First Notifications
+// Syca Service Worker v3 - Offline-First with Internal Scheduling
 const SW_VERSION = 'syca-sw-v3';
 const CACHE_NAME = 'syca-cache-v3';
 
-// فایل‌هایی که cache می‌شن
 const CACHE_FILES = [
     './',
     './index.html',
@@ -30,10 +29,9 @@ self.addEventListener('activate', (event) => {
     event.waitUntil(
         Promise.all([
             self.clients.claim(),
-            // پاک کردن cache های قدیمی
             caches.keys().then(keys => {
                 return Promise.all(
-                    keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))
+                    keys.filter(k => k !== CACHE_NAME && k !== 'syca-schedule').map(k => caches.delete(k))
                 );
             })
         ])
@@ -42,14 +40,12 @@ self.addEventListener('activate', (event) => {
 
 // ============ Fetch (Cache First) ============
 self.addEventListener('fetch', (event) => {
-    // فقط GET request های همین origin رو cache می‌کنیم
     if (event.request.method !== 'GET') return;
     if (!event.request.url.startsWith(self.location.origin)) return;
     
     event.respondWith(
         caches.match(event.request).then((response) => {
             return response || fetch(event.request).catch(() => {
-                // اگه offline ـیم و فایل cache نشده، حداقل index.html رو برگردون
                 if (event.request.mode === 'navigate') {
                     return caches.match('./index.html');
                 }
@@ -58,16 +54,12 @@ self.addEventListener('fetch', (event) => {
     );
 });
 
-// ============ Notification System ============
-
-// ذخیره‌ی نوتیف‌های زمان‌بندی شده
+// ============ Schedule Storage ============
 async function getScheduledNotifications() {
     try {
         const cache = await caches.open('syca-schedule');
         const response = await cache.match('schedule');
-        if (response) {
-            return await response.json();
-        }
+        if (response) return await response.json();
     } catch (e) {
         console.error('[SW] Get schedule error:', e);
     }
@@ -83,7 +75,7 @@ async function setScheduledNotifications(list) {
     }
 }
 
-// نمایش نوتیف
+// ============ نمایش نوتیف ============
 async function showNotificationFromSW(payload) {
     const options = {
         body: payload.body || '',
@@ -93,21 +85,39 @@ async function showNotificationFromSW(payload) {
         requireInteraction: payload.requireInteraction !== false,
         dir: 'rtl',
         lang: 'fa',
+        vibrate: payload.vibrate || [200, 100, 200],
         data: {
             url: payload.url || './',
             type: payload.type || 'general',
             timestamp: Date.now()
-        },
-        actions: payload.actions || []
+        }
     };
-    
-    if (payload.silent) options.silent = true;
-    if (payload.vibrate) options.vibrate = payload.vibrate;
     
     return self.registration.showNotification(payload.title || 'سیکا', options);
 }
 
-// ============ پیام‌های از اپ به SW ============
+// ============ Heartbeat: چک کردن schedule ============
+async function checkAndFireScheduled() {
+    const list = await getScheduledNotifications();
+    const now = Date.now();
+    const stillPending = [];
+    let firedCount = 0;
+    
+    for (const item of list) {
+        if (item.triggerAt <= now) {
+            await showNotificationFromSW(item.payload);
+            console.log('[SW] Fired scheduled:', item.payload.title);
+            firedCount++;
+        } else {
+            stillPending.push(item);
+        }
+    }
+    
+    await setScheduledNotifications(stillPending);
+    return firedCount;
+}
+
+// ============ پیام‌ها ============
 self.addEventListener('message', async (event) => {
     const { type, payload } = event.data || {};
     
@@ -116,7 +126,6 @@ self.addEventListener('message', async (event) => {
     }
     
     if (type === 'SCHEDULE_NOTIFICATION') {
-        // ذخیره برای نمایش در آینده
         const list = await getScheduledNotifications();
         list.push({
             id: payload.id || ('sched-' + Date.now()),
@@ -124,7 +133,7 @@ self.addEventListener('message', async (event) => {
             payload: payload.notification
         });
         await setScheduledNotifications(list);
-        console.log('[SW] Scheduled notification:', payload.notification.title);
+        console.log('[SW] Scheduled:', payload.notification.title, 'at', new Date(payload.triggerAt).toLocaleString());
     }
     
     if (type === 'CLEAR_SCHEDULE') {
@@ -133,35 +142,25 @@ self.addEventListener('message', async (event) => {
     }
     
     if (type === 'CHECK_SCHEDULE') {
-        await checkAndFireScheduled();
+        const count = await checkAndFireScheduled();
+        if (event.source) {
+            event.source.postMessage({ type: 'SCHEDULE_CHECKED', firedCount: count });
+        }
     }
     
-    if (type === 'PING') {
-        // برای تست
+    if (type === 'GET_MISSED') {
+        // برگرداندن نوتیف‌های گذشته که هنوز fired نشدن
+        const list = await getScheduledNotifications();
+        const now = Date.now();
+        const missed = list.filter(item => item.triggerAt <= now);
         if (event.source) {
-            event.source.postMessage({ type: 'PONG', timestamp: Date.now() });
+            event.source.postMessage({ type: 'MISSED_NOTIFICATIONS', missed });
         }
+        // پاک کن
+        const future = list.filter(item => item.triggerAt > now);
+        await setScheduledNotifications(future);
     }
 });
-
-// چک کردن و آتش زدن نوتیف‌های زمان‌بندی شده
-async function checkAndFireScheduled() {
-    const list = await getScheduledNotifications();
-    const now = Date.now();
-    const stillPending = [];
-    
-    for (const item of list) {
-        if (item.triggerAt <= now) {
-            // وقتشه! نوتیف رو نشون بده
-            await showNotificationFromSW(item.payload);
-            console.log('[SW] Fired scheduled:', item.payload.title);
-        } else {
-            stillPending.push(item);
-        }
-    }
-    
-    await setScheduledNotifications(stillPending);
-}
 
 // ============ Click روی نوتیف ============
 self.addEventListener('notificationclick', (event) => {
@@ -171,10 +170,8 @@ self.addEventListener('notificationclick', (event) => {
     
     event.waitUntil(
         clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-            // اگه اپ از قبل باز ـه، focus کن
             for (const client of clientList) {
                 if (client.url.includes(self.location.origin) && 'focus' in client) {
-                    // پیام به اپ بفرست که نوتیف کلیک شده
                     client.postMessage({
                         type: 'NOTIFICATION_CLICKED',
                         notifType: type,
@@ -183,7 +180,6 @@ self.addEventListener('notificationclick', (event) => {
                     return client.focus();
                 }
             }
-            // وگرنه باز کن
             if (clients.openWindow) {
                 return clients.openWindow(url);
             }
@@ -191,22 +187,21 @@ self.addEventListener('notificationclick', (event) => {
     );
 });
 
-// ============ Periodic Background Sync (تجربی) ============
+// ============ Periodic Sync ============
 self.addEventListener('periodicsync', async (event) => {
     if (event.tag === 'syca-check-schedule') {
         event.waitUntil(checkAndFireScheduled());
     }
 });
 
-// ============ Push (اختیاری - برای آینده) ============
+// ============ Push (برای آینده اگه OneSignal کار کرد) ============
 self.addEventListener('push', (event) => {
     let data = {};
     try {
         data = event.data ? event.data.json() : {};
     } catch (e) {
-        data = { title: 'سیکا', body: event.data ? event.data.text() : 'یه یادآوری دارم برات' };
+        data = { title: 'سیکا', body: event.data ? event.data.text() : '' };
     }
-    
     event.waitUntil(showNotificationFromSW(data));
 });
 
