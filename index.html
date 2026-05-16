@@ -15,7 +15,7 @@
     <script>
       window.OneSignalDeferred = window.OneSignalDeferred || [];
       OneSignalDeferred.push(async function(OneSignal) {
-await OneSignal.init({
+        await OneSignal.init({
           appId: "6fc6f316-1014-4389-a9b0-3a06ccf21863",
           serviceWorkerPath: "OneSignalSDKWorker.js",
           serviceWorkerParam: { scope: "/my-ai-assistant/" },
@@ -550,6 +550,17 @@ await OneSignal.init({
             </button>
             <div id="notif-status" style="font-size:0.7rem; color:var(--muted); margin-bottom:10px;"></div>
 
+            <div style="margin-top:15px; padding:15px; background:#000; border-radius:12px; border:1px solid var(--green);">
+                <label style="color:var(--green)">🔔 فعال‌سازی نوتیفیکیشن از راه دور</label>
+                <div style="font-size:0.7rem; color:var(--muted); margin-bottom:8px; line-height:1.6;">
+                    این دکمه رو بزن تا نوتیفیکیشن‌ها حتی وقتی اپ بسته است هم بیان.
+                </div>
+                <button onclick="subscribeToOneSignal()" style="width:100%; background:var(--green); color:white; border:none; padding:12px; border-radius:12px; cursor:pointer; font-size:0.85rem;">
+                    ✅ فعال‌سازی نوتیفیکیشن
+                </button>
+                <div id="onesignal-status" style="font-size:0.7rem; color:var(--muted); margin-top:8px; text-align:center;"></div>
+            </div>
+
             <label>📏 ارتفاع کادرهای چت</label>
             <select id="chat-height">
                 <option value="280">کوتاه</option>
@@ -726,7 +737,8 @@ const DEFAULT_DB = {
     lastSummary: "", lastMood: "", lastNightlyReviewDate: null,
     lastCheckinTime: null, lastFeedbackTime: null,
     pendingGoalChat: null,
-    pendingCheckin: false, pendingFeedback: false
+    pendingCheckin: false, pendingFeedback: false,
+    oneSignalId: null
 };
 
 function migrateDB(oldDB) {
@@ -749,10 +761,8 @@ function migrateDB(oldDB) {
     // migration تسک‌ها — اضافه کردن فیلدهای جدید
     newDB.tasks.forEach(t => {
         if (!t.id) t.id = generateId();
-        // فیلدهای قدیمی n و p
         if (t.n && !t.title) t.title = t.n;
         if (t.p && !t.priority) t.priority = t.p;
-        // پیش‌فرض‌ها
         if (!t.title) t.title = "بدون عنوان";
         if (!t.type) t.type = t.goalId ? 'subtask' : 'oneshot';
         if (!t.priority) t.priority = 'medium';
@@ -770,7 +780,6 @@ function migrateDB(oldDB) {
         if (!t.source) t.source = 'migration';
     });
 
-    // migration اهداف
     newDB.goals.forEach(g => {
         if (!g.id) g.id = generateId();
         if (!g.title && g.n) g.title = g.n;
@@ -780,29 +789,25 @@ function migrateDB(oldDB) {
         if (!g.createdAt) g.createdAt = new Date().toISOString();
     });
 
-    // migration جفت‌ها
     newDB.pairings.forEach(p => {
         if (!p.id) p.id = generateId();
         if (!p.companions) p.companions = [];
         if (!p.createdAt) p.createdAt = new Date().toISOString();
     });
 
-    // settings — فیلدهای جدید با مقدار پیش‌فرض
     Object.keys(DEFAULT_DB.settings).forEach(k => {
         if (newDB.settings[k] === undefined) {
             newDB.settings[k] = DEFAULT_DB.settings[k];
         }
     });
 
-    // فیلدهای top-level
     ['lastSummary', 'lastMood', 'lastNightlyReviewDate', 'lastCheckinTime',
-     'lastFeedbackTime', 'pendingGoalChat'].forEach(k => {
+     'lastFeedbackTime', 'pendingGoalChat', 'oneSignalId'].forEach(k => {
         if (newDB[k] === undefined) newDB[k] = DEFAULT_DB[k];
     });
     if (newDB.pendingCheckin === undefined) newDB.pendingCheckin = false;
     if (newDB.pendingFeedback === undefined) newDB.pendingFeedback = false;
 
-    // پاکسازی فیلدهای قدیمی غیرضروری
     if (Array.isArray(newDB.logs)) delete newDB.logs;
 
     newDB.dbVersion = CURRENT_DB_VERSION;
@@ -813,7 +818,6 @@ function loadDB() {
     let raw = localStorage.getItem('syca_db');
     let source = 'syca_db';
 
-    // اگه کلید اصلی نبود، از کلیدهای قدیمی (به ترتیب جدیدترین به قدیمی‌ترین) پیدا کن
     if (!raw) {
         const legacyKeys = ['syca_db_v20', 'syca_db_v19', 'syca_db_v18'];
         for (const key of legacyKeys) {
@@ -835,7 +839,6 @@ function loadDB() {
     try {
         const parsed = JSON.parse(raw);
         const migrated = migrateDB(parsed);
-        // ذخیره با کلید جدید و ثابت
         localStorage.setItem('syca_db', JSON.stringify(migrated));
         if (source !== 'syca_db') {
             console.log(`Migration complete. Old key ${source} is preserved as safety net.`);
@@ -920,7 +923,6 @@ function importBackup() {
             );
             if (!confirm1) return;
 
-            // پشتیبان اضطراری از داده‌ی فعلی
             localStorage.setItem('syca_db_before_import_' + Date.now(), JSON.stringify(db));
 
             const migrated = migrateDB(dataToImport);
@@ -1038,7 +1040,6 @@ function populateHourSelects() {
     ['check-from-hour', 'check-to-hour', 'feedback-from-hour', 'feedback-to-hour'].forEach(id => {
         const sel = document.getElementById(id);
         if (!sel) return;
-        // پاک کن غیر از option اول
         while (sel.options.length > 1) sel.remove(1);
         for (let i = 0; i < 24; i++) {
             const opt = document.createElement('option');
@@ -1062,6 +1063,7 @@ function showPage(p) {
         updateNotifStatus();
         updateScheduleInfo();
         updateDBInfo();
+        checkOneSignalStatus();
     }
     render();
 }
@@ -1158,6 +1160,72 @@ function testVoice() {
 function triggerCheckinNow() { triggerCheckin(); alert("✅ چک‌این فعال شد. به صفحه اصلی برو."); }
 function triggerFeedbackNow() { triggerFeedback(); alert("✅ فیدبک فعال شد. به صفحه اصلی برو."); }
 
+// ============ OneSignal Subscribe ============
+async function subscribeToOneSignal() {
+    const statusEl = document.getElementById('onesignal-status');
+    statusEl.innerText = "⏳ در حال فعال‌سازی...";
+    
+    try {
+        // مرحله ۱: درخواست permission از مرورگر
+        if (Notification.permission !== 'granted') {
+            const result = await Notification.requestPermission();
+            if (result !== 'granted') {
+                statusEl.innerText = "❌ دسترسی رد شد";
+                return;
+            }
+        }
+        
+        // مرحله ۲: opt-in به OneSignal
+        if (typeof OneSignal !== 'undefined' && OneSignal.User?.PushSubscription) {
+            await OneSignal.User.PushSubscription.optIn();
+            
+            // مرحله ۳: صبر و چک کردن ID
+            statusEl.innerText = "⏳ در حال اتصال به سرور...";
+            let attempts = 0;
+            const checkInterval = setInterval(() => {
+                attempts++;
+                const id = OneSignal.User.PushSubscription.id;
+                if (id) {
+                    statusEl.innerHTML = `✅ فعال شد!<br><small style="opacity:0.6">ID: ${id.substring(0, 8)}...</small>`;
+                    clearInterval(checkInterval);
+                    db.oneSignalId = id;
+                    saveDB();
+                } else if (attempts > 15) {
+                    statusEl.innerText = "⚠️ زمان زیادی طول کشید. ممکنه VPN لازم باشه.";
+                    clearInterval(checkInterval);
+                }
+            }, 2000);
+        } else {
+            statusEl.innerText = "⚠️ OneSignal هنوز لود نشده. صفحه رو رفرش کن.";
+        }
+    } catch (e) {
+        statusEl.innerText = "❌ خطا: " + e.message;
+        console.error("Subscribe error:", e);
+    }
+}
+
+function checkOneSignalStatus() {
+    const statusEl = document.getElementById('onesignal-status');
+    if (!statusEl) return;
+    
+    if (typeof OneSignal !== 'undefined' && OneSignal.User?.PushSubscription) {
+        const id = OneSignal.User.PushSubscription.id;
+        if (id) {
+            statusEl.innerHTML = `✅ فعال<br><small style="opacity:0.6">ID: ${id.substring(0, 8)}...</small>`;
+            if (db.oneSignalId !== id) {
+                db.oneSignalId = id;
+                saveDB();
+            }
+        } else if (Notification.permission === 'granted') {
+            statusEl.innerText = "⚠️ permission داده شده، ولی subscribe نشدی. دکمه‌ی سبز رو بزن.";
+        } else {
+            statusEl.innerText = "⏸ هنوز فعال نشده. دکمه‌ی سبز رو بزن.";
+        }
+    } else {
+        statusEl.innerText = "⏳ OneSignal در حال لود...";
+    }
+}
+
 // ============ نوتیفیکیشن ============
 async function requestNotifPermission() {
     if (!('Notification' in window)) return alert("⚠️ پشتیبانی نمی‌شود.");
@@ -1175,7 +1243,6 @@ function updateNotifStatus() {
 function sendNotif(title, body, onClickAction) {
     if (!('Notification' in window) || Notification.permission !== 'granted') return;
 
-    // اول تلاش از طریق Service Worker (پایدارتر)
     if (swRegistration && swRegistration.active) {
         swRegistration.active.postMessage({
             type: 'SHOW_NOTIFICATION',
@@ -1188,7 +1255,6 @@ function sendNotif(title, body, onClickAction) {
         return;
     }
 
-    // fallback به نوتیفیکیشن کلاسیک
     const notif = new Notification(title, {
         body,
         icon: 'icon-192.png',
@@ -1202,6 +1268,7 @@ function sendNotif(title, body, onClickAction) {
         notif.close();
     };
 }
+
 // ============ زمان‌سنج‌ها ============
 let nightlyTimer = null, checkTimer = null, feedbackTimer = null;
 
@@ -2085,14 +2152,13 @@ function render() {
 function clearAll() {
     if (confirm("⚠️ همه داده‌ها پاک شوند؟\n\nپیشنهاد می‌کنم اول دکمه «📥 دانلود پشتیبان» رو بزنی.")) {
         localStorage.removeItem('syca_db');
-        // پاک کردن کلیدهای قدیمی هم
         ['syca_db_v18', 'syca_db_v19', 'syca_db_v20'].forEach(k => localStorage.removeItem(k));
         location.reload();
     }
 }
 
 // ============ شروع ============
-    // ============ PWA: ثبت Service Worker ============
+// PWA: ثبت Service Worker
 let swRegistration = null;
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
@@ -2104,6 +2170,7 @@ if ('serviceWorker' in navigator) {
             .catch(err => console.error('❌ SW failed:', err));
     });
 }
+
 window.onload = () => {
     applyChatHeight();
     render();
@@ -2113,7 +2180,6 @@ window.onload = () => {
     scheduleNightlyReview();
     schedulePeriodicChecks();
     setTimeout(showNightlyBanner, 1000);
-    // event listeners برای تغییر تنظیمات ساعت
     setTimeout(() => {
         ['interval-check', 'check-from-hour', 'check-to-hour', 'interval-feedback', 'feedback-from-hour', 'feedback-to-hour']
             .forEach(id => {
