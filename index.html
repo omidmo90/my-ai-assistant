@@ -10,6 +10,21 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Syca">
     <link rel="apple-touch-icon" href="icon-192.png">
+    <!-- OneSignal SDK -->
+    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+    <script>
+      window.OneSignalDeferred = window.OneSignalDeferred || [];
+      OneSignalDeferred.push(async function(OneSignal) {
+        await OneSignal.init({
+          appId: "6fc6f316-1014-4389-a9b0-3a06ccf21863",
+          notifyButton: {
+            enable: false,
+          },
+          allowLocalhostAsSecureOrigin: true,
+        });
+        console.log('✅ OneSignal initialized');
+      });
+    </script>
     <style>
         :root {
             --primary: #8b5cf6; --bg: #0a0a0c; --card: #16161e; --text: #f4f4f5;
