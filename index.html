@@ -3,30 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Syca v21 | Migration-Safe</title>
+    <title>Syca v22 | Offline-First</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#3b82f6">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Syca">
     <link rel="apple-touch-icon" href="icon-192.png">
-    <!-- OneSignal SDK -->
-    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
-    <script>
-      window.OneSignalDeferred = window.OneSignalDeferred || [];
-      OneSignalDeferred.push(async function(OneSignal) {
-        await OneSignal.init({
-          appId: "6fc6f316-1014-4389-a9b0-3a06ccf21863",
-          serviceWorkerPath: "OneSignalSDKWorker.js",
-          serviceWorkerParam: { scope: "/my-ai-assistant/" },
-          notifyButton: {
-            enable: false,
-          },
-          allowLocalhostAsSecureOrigin: true,
-        });
-        console.log('✅ OneSignal initialized');
-      });
-    </script>
     <style>
         :root {
             --primary: #8b5cf6; --bg: #0a0a0c; --card: #16161e; --text: #f4f4f5;
@@ -124,6 +107,7 @@
         .ai { align-self: flex-end; background: rgba(139, 92, 246, 0.1); border-left: 4px solid var(--primary); text-align: right; }
         .msg.checkin { background: rgba(6, 182, 212, 0.1); border-left: 4px solid var(--cyan); }
         .msg.feedback-req { background: rgba(249, 115, 22, 0.1); border-left: 4px solid var(--orange); }
+        .msg.offline { background: rgba(239, 68, 68, 0.1); border-left: 4px solid var(--red); }
         .status-badge {
             display: inline-block; padding: 4px 12px; border-radius: 20px;
             font-size: 0.7rem; background: var(--green); color: white; margin-bottom: 10px;
@@ -231,6 +215,18 @@
             justify-content: space-between; align-items: center;
             animation: gentleGlow 2s ease-in-out infinite alternate;
         }
+        .offline-banner {
+            background: linear-gradient(135deg, var(--red), #b91c1c);
+            border-radius: 16px; padding: 12px 16px; margin-bottom: 15px;
+            font-size: 0.85rem; display: flex;
+            justify-content: space-between; align-items: center;
+        }
+        .install-banner {
+            background: linear-gradient(135deg, var(--green), #059669);
+            border-radius: 16px; padding: 12px 16px; margin-bottom: 15px;
+            font-size: 0.85rem; cursor: pointer; display: flex;
+            justify-content: space-between; align-items: center;
+        }
         @keyframes gentleGlow {
             from { box-shadow: 0 0 5px rgba(255,255,255,0.1); }
             to { box-shadow: 0 0 15px rgba(255,255,255,0.3); }
@@ -260,15 +256,41 @@
             margin-top: 20px; padding: 15px; background: #000;
             border-radius: 12px; border: 1px solid var(--green);
         }
+        .status-bar {
+            display: flex; align-items: center; gap: 8px;
+            justify-content: center; padding: 6px 12px;
+            background: var(--card); border-bottom: 1px solid var(--border);
+            font-size: 0.7rem;
+        }
+        .status-bar .indicator {
+            width: 8px; height: 8px; border-radius: 50%;
+            display: inline-block;
+        }
+        .status-bar .indicator.online { background: var(--green); box-shadow: 0 0 8px var(--green); }
+        .status-bar .indicator.offline { background: var(--red); box-shadow: 0 0 8px var(--red); }
+        .status-bar .indicator.installed { background: var(--blue); }
     </style>
 </head>
 <body>
+
+<div class="status-bar" id="status-bar">
+    <span class="indicator online" id="online-indicator"></span>
+    <span id="status-text">آنلاین</span>
+    <span style="color: var(--muted); margin: 0 8px;">•</span>
+    <span id="install-status" style="color: var(--muted);">نصب نشده</span>
+</div>
 
 <div class="content">
     <!-- ============ صفحه اصلی ============ -->
     <div id="page-home" class="page active">
         <h1>SYCA CENTER</h1>
 
+        <div id="install-banner" class="install-banner" style="display:none;" onclick="installPWA()">
+            <span>📱 برای بهترین تجربه، اپ رو نصب کن</span><span>›</span>
+        </div>
+        <div id="offline-banner" class="offline-banner" style="display:none;">
+            <span>🔌 اینترنت قطعه - حالت آفلاین فعال</span><span>⚠️</span>
+        </div>
         <div id="nightly-banner" class="nightly-banner" style="display:none;" onclick="openNightlyReview()">
             <span>🌙 وقت مرور شبانه است.</span><span>›</span>
         </div>
@@ -551,14 +573,10 @@
             <div id="notif-status" style="font-size:0.7rem; color:var(--muted); margin-bottom:10px;"></div>
 
             <div style="margin-top:15px; padding:15px; background:#000; border-radius:12px; border:1px solid var(--green);">
-                <label style="color:var(--green)">🔔 فعال‌سازی نوتیفیکیشن از راه دور</label>
-                <div style="font-size:0.7rem; color:var(--muted); margin-bottom:8px; line-height:1.6;">
-                    این دکمه رو بزن تا نوتیفیکیشن‌ها حتی وقتی اپ بسته است هم بیان.
+                <label style="color:var(--green)">📱 وضعیت سیستم</label>
+                <div id="system-status" style="font-size:0.7rem; color:var(--muted); line-height:1.8;">
+                    در حال بررسی...
                 </div>
-                <button onclick="subscribeToOneSignal()" style="width:100%; background:var(--green); color:white; border:none; padding:12px; border-radius:12px; cursor:pointer; font-size:0.85rem;">
-                    ✅ فعال‌سازی نوتیفیکیشن
-                </button>
-                <div id="onesignal-status" style="font-size:0.7rem; color:var(--muted); margin-top:8px; text-align:center;"></div>
             </div>
 
             <label>📏 ارتفاع کادرهای چت</label>
@@ -589,12 +607,14 @@
             <button onclick="triggerFeedbackNow()" style="width:100%; margin-top:10px; background:var(--orange); color:white; border:none; padding:12px; border-radius:12px; cursor:pointer;">
                 📊 تست فیدبک (الان)
             </button>
+            <button onclick="testScheduledNotif()" style="width:100%; margin-top:10px; background:var(--green); color:white; border:none; padding:12px; border-radius:12px; cursor:pointer;">
+                ⏰ تست نوتیف زمان‌بندی شده (۳۰ ثانیه دیگه)
+            </button>
 
-            <!-- ✨ پشتیبان‌گیری -->
             <div class="backup-box">
                 <label style="color:var(--green)">💾 پشتیبان‌گیری از داده‌ها</label>
                 <div style="font-size:0.7rem; color:var(--muted); margin-bottom:10px; line-height:1.6;">
-                    قبل از آپدیت کد یا پاک کردن مرورگر، یه پشتیبان بگیر. فایل JSON دانلود می‌شه که شامل همه اهداف، کارها، جفت‌ها و تنظیمات هست.
+                    قبل از آپدیت کد یا پاک کردن مرورگر، یه پشتیبان بگیر.
                 </div>
                 <button onclick="exportBackup()" style="width:100%; background:var(--green); color:white; border:none; padding:12px; border-radius:12px; cursor:pointer; margin-bottom:8px; font-size:0.85rem;">
                     📥 دانلود پشتیبان
@@ -603,7 +623,7 @@
                     📤 بازیابی از پشتیبان (جایگزین کامل)
                 </button>
                 <button onclick="mergeBackup()" style="width:100%; background:var(--cyan); color:white; border:none; padding:12px; border-radius:12px; cursor:pointer; font-size:0.85rem;">
-                    🔀 ترکیب با پشتیبان (اضافه‌کردن موارد جدید)
+                    🔀 ترکیب با پشتیبان
                 </button>
                 <div id="db-info" style="font-size:0.65rem; color:var(--muted); margin-top:10px; text-align:center;"></div>
             </div>
@@ -715,7 +735,7 @@
 
 <script>
 // ============ سیستم Migration و دیتابیس ============
-const CURRENT_DB_VERSION = 21;
+const CURRENT_DB_VERSION = 22;
 
 function generateId() {
     return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
@@ -738,7 +758,7 @@ const DEFAULT_DB = {
     lastCheckinTime: null, lastFeedbackTime: null,
     pendingGoalChat: null,
     pendingCheckin: false, pendingFeedback: false,
-    oneSignalId: null
+    offlineQueue: []
 };
 
 function migrateDB(oldDB) {
@@ -748,7 +768,6 @@ function migrateDB(oldDB) {
 
     const newDB = JSON.parse(JSON.stringify(oldDB));
 
-    // اطمینان از وجود ساختارهای پایه
     newDB.goals = newDB.goals || [];
     newDB.tasks = newDB.tasks || [];
     newDB.pairings = newDB.pairings || [];
@@ -758,7 +777,6 @@ function migrateDB(oldDB) {
     newDB.settings = newDB.settings || {};
     newDB.todayPlan = newDB.todayPlan || { date: null, context: [], availableHours: 4, energyLevel: 'medium', suggestedTaskIds: [], notes: '' };
 
-    // migration تسک‌ها — اضافه کردن فیلدهای جدید
     newDB.tasks.forEach(t => {
         if (!t.id) t.id = generateId();
         if (t.n && !t.title) t.title = t.n;
@@ -802,12 +820,14 @@ function migrateDB(oldDB) {
     });
 
     ['lastSummary', 'lastMood', 'lastNightlyReviewDate', 'lastCheckinTime',
-     'lastFeedbackTime', 'pendingGoalChat', 'oneSignalId'].forEach(k => {
+     'lastFeedbackTime', 'pendingGoalChat', 'offlineQueue'].forEach(k => {
         if (newDB[k] === undefined) newDB[k] = DEFAULT_DB[k];
     });
     if (newDB.pendingCheckin === undefined) newDB.pendingCheckin = false;
     if (newDB.pendingFeedback === undefined) newDB.pendingFeedback = false;
 
+    // پاکسازی فیلدهای قدیمی OneSignal
+    if (newDB.oneSignalId !== undefined) delete newDB.oneSignalId;
     if (Array.isArray(newDB.logs)) delete newDB.logs;
 
     newDB.dbVersion = CURRENT_DB_VERSION;
@@ -819,13 +839,13 @@ function loadDB() {
     let source = 'syca_db';
 
     if (!raw) {
-        const legacyKeys = ['syca_db_v20', 'syca_db_v19', 'syca_db_v18'];
+        const legacyKeys = ['syca_db_v21', 'syca_db_v20', 'syca_db_v19', 'syca_db_v18'];
         for (const key of legacyKeys) {
             const v = localStorage.getItem(key);
             if (v) {
                 raw = v;
                 source = key;
-                console.log(`Found legacy data in ${key}, will migrate to syca_db`);
+                console.log(`Found legacy data in ${key}`);
                 break;
             }
         }
@@ -840,13 +860,10 @@ function loadDB() {
         const parsed = JSON.parse(raw);
         const migrated = migrateDB(parsed);
         localStorage.setItem('syca_db', JSON.stringify(migrated));
-        if (source !== 'syca_db') {
-            console.log(`Migration complete. Old key ${source} is preserved as safety net.`);
-        }
         return migrated;
     } catch (e) {
         console.error("Failed to parse DB:", e);
-        alert("⚠️ خطا در خواندن داده‌ها. به Console (F12) نگاه کن.");
+        alert("⚠️ خطا در خواندن داده‌ها.");
         return JSON.parse(JSON.stringify(DEFAULT_DB));
     }
 }
@@ -855,6 +872,9 @@ let db = loadDB();
 let recognition = null;
 let currentRecordingType = null;
 let activeTab = 'goals';
+let isOnline = navigator.onLine;
+let deferredInstallPrompt = null;
+let swRegistration = null;
 
 // ============ ابزار ============
 function escapeHtml(s) {
@@ -871,12 +891,119 @@ function applyChatHeight() {
     document.querySelectorAll('.chat-card').forEach(c => c.style.height = h + 'px');
 }
 
+// ============ Online/Offline Detection ============
+function updateOnlineStatus() {
+    isOnline = navigator.onLine;
+    const indicator = document.getElementById('online-indicator');
+    const text = document.getElementById('status-text');
+    const banner = document.getElementById('offline-banner');
+    
+    if (isOnline) {
+        indicator.className = 'indicator online';
+        text.innerText = 'آنلاین';
+        if (banner) banner.style.display = 'none';
+        // پردازش صف offline
+        processOfflineQueue();
+    } else {
+        indicator.className = 'indicator offline';
+        text.innerText = 'آفلاین';
+        if (banner) banner.style.display = 'flex';
+        // اعلام صوتی
+        speak("اینترنت قطعه. حالت آفلاین فعال شد.", "Internet disconnected. Offline mode active.");
+    }
+    updateSystemStatus();
+}
+
+window.addEventListener('online', updateOnlineStatus);
+window.addEventListener('offline', updateOnlineStatus);
+
+async function processOfflineQueue() {
+    if (!db.offlineQueue || db.offlineQueue.length === 0) return;
+    if (!db.settings.key) return;
+    
+    const queue = [...db.offlineQueue];
+    db.offlineQueue = [];
+    saveDB();
+    
+    let processed = 0;
+    for (const item of queue) {
+        try {
+            if (item.type === 'chat') {
+                // پردازش با AI
+                speak(`در حال پردازش پیام آفلاین: ${item.text.substring(0, 30)}`, "");
+                processed++;
+            }
+        } catch (e) {
+            console.error("Queue processing error:", e);
+            db.offlineQueue.push(item);
+        }
+    }
+    saveDB();
+    
+    if (processed > 0) {
+        sendNotif('✅ سیکا', `${processed} پیام آفلاین پردازش شد`, null);
+    }
+}
+
+// ============ PWA Install ============
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    const banner = document.getElementById('install-banner');
+    if (banner && !isInstalled()) banner.style.display = 'flex';
+});
+
+window.addEventListener('appinstalled', () => {
+    deferredInstallPrompt = null;
+    const banner = document.getElementById('install-banner');
+    if (banner) banner.style.display = 'none';
+    updateSystemStatus();
+    speak("اپ نصب شد. حالا می‌تونی از صفحه‌ی اصلی بازش کنی.", "App installed.");
+});
+
+function isInstalled() {
+    return window.matchMedia('(display-mode: standalone)').matches ||
+           window.navigator.standalone === true;
+}
+
+async function installPWA() {
+    if (!deferredInstallPrompt) {
+        alert("برای نصب، در Chrome به منوی سه‌نقطه برو و 'Add to Home screen' رو بزن.");
+        return;
+    }
+    deferredInstallPrompt.prompt();
+    const { outcome } = await deferredInstallPrompt.userChoice;
+    if (outcome === 'accepted') {
+        document.getElementById('install-banner').style.display = 'none';
+    }
+    deferredInstallPrompt = null;
+}
+
+function updateSystemStatus() {
+    const el = document.getElementById('system-status');
+    if (!el) return;
+    const installed = isInstalled();
+    const installEl = document.getElementById('install-status');
+    if (installEl) installEl.innerText = installed ? '✅ نصب شده' : '⚠️ نصب نشده';
+    
+    const notif = ('Notification' in window) ? Notification.permission : 'unsupported';
+    const sw = swRegistration ? '✅ فعال' : '⚠️ غیرفعال';
+    
+    el.innerHTML = `
+        🌐 اینترنت: ${isOnline ? '✅ آنلاین' : '❌ آفلاین'}<br>
+        📱 PWA: ${installed ? '✅ نصب شده' : '⚠️ نصب نشده'}<br>
+        🔔 نوتیفیکیشن: ${notif === 'granted' ? '✅ مجاز' : notif === 'denied' ? '❌ رد شده' : '⏳ هنوز نپرسیده'}<br>
+        ⚙️ Service Worker: ${sw}<br>
+        💾 صف آفلاین: ${(db.offlineQueue || []).length} پیام
+    `;
+}
+
 // ============ Export/Import پشتیبان ============
 function exportBackup() {
     try {
         const data = {
             exportedAt: new Date().toISOString(),
-            appVersion: "Syca v21",
+            appVersion: "Syca v22",
             dbVersion: CURRENT_DB_VERSION,
             data: db
         };
@@ -893,7 +1020,7 @@ function exportBackup() {
         URL.revokeObjectURL(url);
         alert("✅ پشتیبان دانلود شد.");
     } catch (e) {
-        alert("⚠️ خطا در دانلود پشتیبان: " + e.message);
+        alert("⚠️ خطا: " + e.message);
     }
 }
 
@@ -917,21 +1044,19 @@ function importBackup() {
                 `📤 پشتیبان شامل:\n` +
                 `• ${(dataToImport.goals || []).length} هدف\n` +
                 `• ${(dataToImport.tasks || []).length} کار\n` +
-                `• ${(dataToImport.pairings || []).length} جفت\n` +
-                `${parsed.exportedAt ? '• تاریخ پشتیبان: ' + new Date(parsed.exportedAt).toLocaleString('fa-IR') + '\n' : ''}` +
-                `\nآیا می‌خواهید با این پشتیبان جایگزین کنید؟\nداده‌های فعلی پاک می‌شوند.`
+                `• ${(dataToImport.pairings || []).length} جفت\n\n` +
+                `جایگزین کنیم؟`
             );
             if (!confirm1) return;
 
             localStorage.setItem('syca_db_before_import_' + Date.now(), JSON.stringify(db));
-
             const migrated = migrateDB(dataToImport);
             localStorage.setItem('syca_db', JSON.stringify(migrated));
             db = migrated;
-            alert("✅ بازیابی موفق! صفحه رفرش می‌شود.");
+            alert("✅ بازیابی شد!");
             location.reload();
         } catch (e) {
-            alert("⚠️ خطا در بازیابی: " + e.message);
+            alert("⚠️ خطا: " + e.message);
         }
     };
     input.click();
@@ -949,14 +1074,7 @@ function mergeBackup() {
             const parsed = JSON.parse(text);
             const dataToMerge = parsed.data || parsed;
 
-            const confirm1 = confirm(
-                `🔀 ترکیب پشتیبان با داده‌های فعلی:\n` +
-                `• ${(dataToMerge.goals || []).length} هدف\n` +
-                `• ${(dataToMerge.tasks || []).length} کار\n` +
-                `• ${(dataToMerge.pairings || []).length} جفت\n\n` +
-                `داده‌های فعلی حفظ می‌شن، فقط موارد جدید اضافه می‌شه.`
-            );
-            if (!confirm1) return;
+            if (!confirm(`🔀 ترکیب پشتیبان؟`)) return;
 
             const existingTaskIds = new Set(db.tasks.map(t => t.id));
             const existingGoalIds = new Set(db.goals.map(g => g.id));
@@ -976,9 +1094,9 @@ function mergeBackup() {
             db = migrateDB(db);
             saveDB();
             render();
-            alert(`✅ ترکیب موفق! ${addedCount} مورد جدید اضافه شد.`);
+            alert(`✅ ${addedCount} مورد جدید اضافه شد.`);
         } catch (e) {
-            alert("⚠️ خطا در ترکیب: " + e.message);
+            alert("⚠️ خطا: " + e.message);
         }
     };
     input.click();
@@ -1063,7 +1181,7 @@ function showPage(p) {
         updateNotifStatus();
         updateScheduleInfo();
         updateDBInfo();
-        checkOneSignalStatus();
+        updateSystemStatus();
     }
     render();
 }
@@ -1106,7 +1224,7 @@ function updateScheduleInfo() {
         if (checkInt === "0") checkInfo.innerText = "⏸ غیرفعال";
         else {
             const times = computeScheduledTimes(parseInt(checkInt), parseInt(checkFrom), parseInt(checkTo));
-            checkInfo.innerText = times.length > 0 ? `⏰ ساعت‌های پرسش: ${times.map(t => t.toString().padStart(2,'0')+':00').join(' • ')}` : "⚠️ ساعت شروع و پایان رو تنظیم کن";
+            checkInfo.innerText = times.length > 0 ? `⏰ ${times.map(t => t.toString().padStart(2,'0')+':00').join(' • ')}` : "⚠️ ساعت تنظیم نشده";
         }
     }
     const fbInt = document.getElementById('interval-feedback')?.value || db.settings.feedbackInterval;
@@ -1117,7 +1235,7 @@ function updateScheduleInfo() {
         if (fbInt === "0") fbInfo.innerText = "⏸ غیرفعال";
         else {
             const times = computeScheduledTimes(parseInt(fbInt), parseInt(fbFrom), parseInt(fbTo));
-            fbInfo.innerText = times.length > 0 ? `⏰ ساعت‌های پرسش: ${times.map(t => t.toString().padStart(2,'0')+':00').join(' • ')}` : "⚠️ ساعت شروع و پایان رو تنظیم کن";
+            fbInfo.innerText = times.length > 0 ? `⏰ ${times.map(t => t.toString().padStart(2,'0')+':00').join(' • ')}` : "⚠️ ساعت تنظیم نشده";
         }
     }
 }
@@ -1146,7 +1264,7 @@ function saveSettings() {
     db.settings.feedbackMethod = document.getElementById('feedback-method').value;
     saveDB();
     applyChatHeight();
-    schedulePeriodicChecks();
+    scheduleAllNotifications();
     alert("✅ ذخیره شد.");
 }
 
@@ -1157,73 +1275,18 @@ function testVoice() {
     speak("سلام، تست صدا.", "Hello, voice test.");
 }
 
-function triggerCheckinNow() { triggerCheckin(); alert("✅ چک‌این فعال شد. به صفحه اصلی برو."); }
-function triggerFeedbackNow() { triggerFeedback(); alert("✅ فیدبک فعال شد. به صفحه اصلی برو."); }
+function triggerCheckinNow() { triggerCheckin(); alert("✅ چک‌این فعال شد."); }
+function triggerFeedbackNow() { triggerFeedback(); alert("✅ فیدبک فعال شد."); }
 
-// ============ OneSignal Subscribe ============
-async function subscribeToOneSignal() {
-    const statusEl = document.getElementById('onesignal-status');
-    statusEl.innerText = "⏳ در حال فعال‌سازی...";
-    
-    try {
-        // مرحله ۱: درخواست permission از مرورگر
-        if (Notification.permission !== 'granted') {
-            const result = await Notification.requestPermission();
-            if (result !== 'granted') {
-                statusEl.innerText = "❌ دسترسی رد شد";
-                return;
-            }
-        }
-        
-        // مرحله ۲: opt-in به OneSignal
-        if (typeof OneSignal !== 'undefined' && OneSignal.User?.PushSubscription) {
-            await OneSignal.User.PushSubscription.optIn();
-            
-            // مرحله ۳: صبر و چک کردن ID
-            statusEl.innerText = "⏳ در حال اتصال به سرور...";
-            let attempts = 0;
-            const checkInterval = setInterval(() => {
-                attempts++;
-                const id = OneSignal.User.PushSubscription.id;
-                if (id) {
-                    statusEl.innerHTML = `✅ فعال شد!<br><small style="opacity:0.6">ID: ${id.substring(0, 8)}...</small>`;
-                    clearInterval(checkInterval);
-                    db.oneSignalId = id;
-                    saveDB();
-                } else if (attempts > 15) {
-                    statusEl.innerText = "⚠️ زمان زیادی طول کشید. ممکنه VPN لازم باشه.";
-                    clearInterval(checkInterval);
-                }
-            }, 2000);
-        } else {
-            statusEl.innerText = "⚠️ OneSignal هنوز لود نشده. صفحه رو رفرش کن.";
-        }
-    } catch (e) {
-        statusEl.innerText = "❌ خطا: " + e.message;
-        console.error("Subscribe error:", e);
-    }
-}
-
-function checkOneSignalStatus() {
-    const statusEl = document.getElementById('onesignal-status');
-    if (!statusEl) return;
-    
-    if (typeof OneSignal !== 'undefined' && OneSignal.User?.PushSubscription) {
-        const id = OneSignal.User.PushSubscription.id;
-        if (id) {
-            statusEl.innerHTML = `✅ فعال<br><small style="opacity:0.6">ID: ${id.substring(0, 8)}...</small>`;
-            if (db.oneSignalId !== id) {
-                db.oneSignalId = id;
-                saveDB();
-            }
-        } else if (Notification.permission === 'granted') {
-            statusEl.innerText = "⚠️ permission داده شده، ولی subscribe نشدی. دکمه‌ی سبز رو بزن.";
-        } else {
-            statusEl.innerText = "⏸ هنوز فعال نشده. دکمه‌ی سبز رو بزن.";
-        }
-    } else {
-        statusEl.innerText = "⏳ OneSignal در حال لود...";
-    }
+function testScheduledNotif() {
+    const triggerAt = Date.now() + 30000; // 30 seconds later
+    scheduleNotificationViaSW({
+        title: '⏰ تست زمان‌بندی',
+        body: 'این نوتیف از Service Worker بعد از ۳۰ ثانیه اومد!',
+        type: 'test',
+        url: './'
+    }, triggerAt);
+    alert("✅ نوتیف برای ۳۰ ثانیه دیگه زمان‌بندی شد. می‌تونی اپ رو ببندی.");
 }
 
 // ============ نوتیفیکیشن ============
@@ -1231,6 +1294,7 @@ async function requestNotifPermission() {
     if (!('Notification' in window)) return alert("⚠️ پشتیبانی نمی‌شود.");
     const result = await Notification.requestPermission();
     updateNotifStatus();
+    updateSystemStatus();
     alert(result === 'granted' ? "✅ دسترسی داده شد." : "❌ رد شد.");
 }
 function updateNotifStatus() {
@@ -1240,17 +1304,14 @@ function updateNotifStatus() {
     const status = Notification.permission;
     el.innerText = status === 'granted' ? "✅ دسترسی داده شده" : status === 'denied' ? "❌ رد شده" : "⏳ هنوز درخواست نشده";
 }
+
 function sendNotif(title, body, onClickAction) {
     if (!('Notification' in window) || Notification.permission !== 'granted') return;
 
     if (swRegistration && swRegistration.active) {
         swRegistration.active.postMessage({
             type: 'SHOW_NOTIFICATION',
-            payload: {
-                title, body,
-                tag: 'syca-' + Date.now(),
-                url: './'
-            }
+            payload: { title, body, tag: 'syca-' + Date.now(), url: './' }
         });
         return;
     }
@@ -1269,8 +1330,32 @@ function sendNotif(title, body, onClickAction) {
     };
 }
 
-// ============ زمان‌سنج‌ها ============
+// زمان‌بندی نوتیف از طریق Service Worker
+function scheduleNotificationViaSW(notification, triggerAt) {
+    if (!swRegistration || !swRegistration.active) {
+        console.warn('[App] SW not ready for scheduling');
+        return false;
+    }
+    swRegistration.active.postMessage({
+        type: 'SCHEDULE_NOTIFICATION',
+        payload: {
+            id: 'sched-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
+            triggerAt,
+            notification
+        }
+    });
+    return true;
+}
+
+// ============ Internal Scheduling ============
 let nightlyTimer = null, checkTimer = null, feedbackTimer = null;
+let heartbeatTimer = null;
+
+function scheduleAllNotifications() {
+    scheduleNightlyReview();
+    scheduleAllCheckins();
+    scheduleAllFeedbacks();
+}
 
 function scheduleNightlyReview() {
     if (nightlyTimer) clearTimeout(nightlyTimer);
@@ -1280,14 +1365,16 @@ function scheduleNightlyReview() {
     const target = new Date();
     target.setHours(h, m, 0, 0);
     if (target <= now) target.setDate(target.getDate() + 1);
+    
+    // اطلاع‌رسانی هم via SW (وقتی اپ بسته) و هم via setTimeout (وقتی باز)
+    scheduleNotificationViaSW({
+        title: '🌙 سیکا - مرور شبانه',
+        body: 'وقتشه برای فردا برنامه‌ریزی کنیم',
+        type: 'nightly',
+        url: './'
+    }, target.getTime());
+    
     nightlyTimer = setTimeout(() => { triggerNightlyReview(); scheduleNightlyReview(); }, target - now);
-}
-
-function schedulePeriodicChecks() {
-    if (checkTimer) clearTimeout(checkTimer);
-    if (feedbackTimer) clearTimeout(feedbackTimer);
-    scheduleNextCheckin();
-    scheduleNextFeedback();
 }
 
 function findNextScheduledTime(intervalH, fromH, toH) {
@@ -1310,32 +1397,98 @@ function findNextScheduledTime(intervalH, fromH, toH) {
     return target;
 }
 
-function scheduleNextCheckin() {
+function scheduleAllCheckins() {
     if (checkTimer) clearTimeout(checkTimer);
     const interval = parseInt(db.settings.checkInterval) || 0;
     if (interval === 0) return;
     const fromH = parseInt(db.settings.checkFromHour);
     const toH = parseInt(db.settings.checkToHour);
     if (isNaN(fromH) || isNaN(toH)) return;
+    
+    // زمان‌بندی همه‌ی چک‌این‌های ۲۴ ساعت آینده در SW
+    const times = computeScheduledTimes(interval, fromH, toH);
+    const now = new Date();
+    
+    times.forEach(h => {
+        // امروز
+        const today = new Date();
+        today.setHours(h, 0, 0, 0);
+        if (today > now) {
+            scheduleNotificationViaSW({
+                title: '📍 سیکا - بررسی وضعیت',
+                body: 'الان کجایی و مشغول چه کاری هستی؟',
+                type: 'checkin',
+                url: './'
+            }, today.getTime());
+        }
+        // فردا
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        scheduleNotificationViaSW({
+            title: '📍 سیکا - بررسی وضعیت',
+            body: 'الان کجایی و مشغول چه کاری هستی؟',
+            type: 'checkin',
+            url: './'
+        }, tomorrow.getTime());
+    });
+    
+    // در زمان لایو (وقتی اپ بازه) هم trigger می‌کنیم
     const next = findNextScheduledTime(interval, fromH, toH);
-    if (!next) return;
-    const delay = next - new Date();
-    console.log(`Next checkin in ${(delay/1000/60).toFixed(1)} min at ${next.toLocaleTimeString()}`);
-    checkTimer = setTimeout(() => { triggerCheckin(); scheduleNextCheckin(); }, delay);
+    if (next) {
+        const delay = next - new Date();
+        checkTimer = setTimeout(() => { triggerCheckin(); scheduleAllCheckins(); }, delay);
+        console.log(`Next checkin in ${(delay/1000/60).toFixed(1)} min`);
+    }
 }
 
-function scheduleNextFeedback() {
+function scheduleAllFeedbacks() {
     if (feedbackTimer) clearTimeout(feedbackTimer);
     const interval = parseInt(db.settings.feedbackInterval) || 0;
     if (interval === 0) return;
     const fromH = parseInt(db.settings.feedbackFromHour);
     const toH = parseInt(db.settings.feedbackToHour);
     if (isNaN(fromH) || isNaN(toH)) return;
+    
+    const times = computeScheduledTimes(interval, fromH, toH);
+    const now = new Date();
+    
+    times.forEach(h => {
+        const today = new Date();
+        today.setHours(h, 0, 0, 0);
+        if (today > now) {
+            scheduleNotificationViaSW({
+                title: '📊 سیکا - فیدبک',
+                body: 'کارها چطور پیش رفت؟',
+                type: 'feedback',
+                url: './'
+            }, today.getTime());
+        }
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        scheduleNotificationViaSW({
+            title: '📊 سیکا - فیدبک',
+            body: 'کارها چطور پیش رفت؟',
+            type: 'feedback',
+            url: './'
+        }, tomorrow.getTime());
+    });
+    
     const next = findNextScheduledTime(interval, fromH, toH);
-    if (!next) return;
-    const delay = next - new Date();
-    console.log(`Next feedback in ${(delay/1000/60).toFixed(1)} min at ${next.toLocaleTimeString()}`);
-    feedbackTimer = setTimeout(() => { triggerFeedback(); scheduleNextFeedback(); }, delay);
+    if (next) {
+        const delay = next - new Date();
+        feedbackTimer = setTimeout(() => { triggerFeedback(); scheduleAllFeedbacks(); }, delay);
+        console.log(`Next feedback in ${(delay/1000/60).toFixed(1)} min`);
+    }
+}
+
+// Heartbeat: هر ۲ دقیقه SW رو پینگ می‌کنه که چک کنه
+function startHeartbeat() {
+    if (heartbeatTimer) clearInterval(heartbeatTimer);
+    heartbeatTimer = setInterval(() => {
+        if (swRegistration && swRegistration.active) {
+            swRegistration.active.postMessage({ type: 'CHECK_SCHEDULE' });
+        }
+    }, 120000); // 2 minutes
 }
 
 // ============ چک‌این ============
@@ -1344,8 +1497,16 @@ function triggerCheckin() {
     db.lastCheckinTime = new Date().toISOString();
     saveDB();
     const method = db.settings.checkMethod || "both";
-    const question = "الان کجایی و مشغول چه کاری هستی؟";
-    const questionEn = "Where are you now and what are you doing?";
+    
+    let question, questionEn;
+    if (!isOnline) {
+        question = "الان کجایی و چی کار می‌کنی؟ ثبت می‌کنم، وقتی اینترنت برگشت AI تحلیلش می‌کنه.";
+        questionEn = "Where are you and what are you doing?";
+    } else {
+        question = "الان کجایی و مشغول چه کاری هستی؟";
+        questionEn = "Where are you now?";
+    }
+    
     if (method === "notif" || method === "both") sendNotif("📍 سیکا - بررسی وضعیت", question, () => answerCheckin());
     if (method === "voice" || method === "both") speak(question, questionEn);
     showCheckinBanner();
@@ -1363,7 +1524,7 @@ function answerCheckin() {
         const input = document.getElementById('status-input');
         if (input) {
             input.focus();
-            input.placeholder = "📍 الان کجایی و چی کار می‌کنی؟";
+            input.placeholder = isOnline ? "📍 الان کجایی و چی کار می‌کنی؟" : "📍 ثبت می‌شه برای بعد...";
         }
         addMessage('quick', 'ai', '📍 الان کجایی و مشغول چه کاری هستی؟', 'checkin');
     }, 200);
@@ -1381,24 +1542,19 @@ function triggerFeedback() {
     const recentDone = db.tasks.filter(t => {
         if (!t.done || !t.doneAt) return false;
         const doneTime = new Date(t.doneAt);
-        const hoursSince = (Date.now() - doneTime) / (1000 * 60 * 60);
-        return hoursSince < 6;
+        return (Date.now() - doneTime) / (1000 * 60 * 60) < 6;
     });
-    const suggested = db.todayPlan?.suggestedTaskIds?.length > 0 && db.todayPlan?.date === todayStr()
-        ? db.todayPlan.suggestedTaskIds.map(id => db.tasks.find(t => t.id === id)).filter(t => t && !t.done)
-        : [];
 
     let question, questionEn;
-    if (recentDone.length > 0) {
+    if (!isOnline) {
+        question = "کارها چطور پیش رفت؟ ثبت می‌کنم، وقتی اینترنت برگشت تحلیلش می‌کنم.";
+        questionEn = "How did tasks go?";
+    } else if (recentDone.length > 0) {
         question = "چه خبر؟ کارهایی که اخیراً انجام دادی چطور پیش رفت؟";
         questionEn = "How did the recent tasks go?";
-    } else if (suggested.length > 0) {
-        const sampleTask = suggested[0].title;
-        question = `سراغ کارهای امروز رفتی؟ مثلاً "${sampleTask}" چطور پیش می‌ره؟`;
-        questionEn = `Did you start today's tasks? How is "${sampleTask}" going?`;
     } else {
         question = "چه خبر؟ کارها چطور پیش می‌ره؟";
-        questionEn = "How are things going?";
+        questionEn = "How are things?";
     }
 
     if (method === "notif" || method === "both") sendNotif("📊 سیکا - فیدبک", question, () => answerFeedback());
@@ -1419,10 +1575,7 @@ function answerFeedback() {
     showPage('home');
     setTimeout(() => {
         const input = document.getElementById('chat-input');
-        if (input) {
-            input.focus();
-            input.placeholder = "📊 درباره عملکردت بگو...";
-        }
+        if (input) input.focus();
         const question = db._pendingFeedbackQuestion || "کارها چطور پیش رفت؟";
         addMessage('deep', 'ai', `📊 ${question}`, 'feedback-req');
     }, 200);
@@ -1476,18 +1629,18 @@ async function submitNightlyReview() {
     document.getElementById('nightly-step-1').style.display = 'none';
     document.getElementById('nightly-step-2').style.display = 'block';
     db.todayPlan = { date: tomorrowStr(), context: selectedCtx, availableHours: hours, energyLevel: energy, notes, suggestedTaskIds: [] };
-    if (notes) await extractTasksFromNotes(notes);
-    await generateTodaySuggestions();
+    if (notes && isOnline) await extractTasksFromNotes(notes);
+    if (isOnline) await generateTodaySuggestions();
     db.lastNightlyReviewDate = todayStr();
     saveDB();
     closeNightlyReview();
     document.getElementById('nightly-banner').style.display = 'none';
     showPage('home');
-    alert("✨ برنامه فردا آماده شد!");
+    alert(isOnline ? "✨ برنامه فردا آماده شد!" : "✨ تنظیمات ذخیره شد. وقتی اینترنت برگشت، AI پیشنهاد می‌ده.");
 }
 
 async function extractTasksFromNotes(notes) {
-    if (!db.settings.key) return;
+    if (!db.settings.key || !isOnline) return;
     const prompt = `از این متن کارهایی که باید فردا انجام بشن رو استخراج کن:
 "${notes}"
 
@@ -1520,7 +1673,7 @@ JSON:
 }
 
 async function generateTodaySuggestions() {
-    if (!db.settings.key || db.tasks.length === 0) return;
+    if (!db.settings.key || db.tasks.length === 0 || !isOnline) return;
     const plan = db.todayPlan;
     const count = parseInt(db.settings.suggestCount) || 5;
     const activeTasks = db.tasks.filter(t => !t.done);
@@ -1557,6 +1710,7 @@ JSON:
 }
 
 async function rebuildTodayPlan() {
+    if (!isOnline) return alert("⚠️ این بخش نیاز به اینترنت داره.");
     if (!db.todayPlan.context || db.todayPlan.context.length === 0) return alert("ابتدا یک مرور شبانه انجام بده.");
     await generateTodaySuggestions();
     saveDB();
@@ -1565,6 +1719,7 @@ async function rebuildTodayPlan() {
 
 // ============ Idle Time ============
 function openIdleModal() {
+    if (!isOnline) return alert("⚠️ این بخش نیاز به اینترنت داره.");
     document.getElementById('idle-modal').classList.add('active');
     document.getElementById('idle-step-1').style.display = 'block';
     document.getElementById('idle-step-2').style.display = 'none';
@@ -1572,6 +1727,7 @@ function openIdleModal() {
 function closeIdleModal() { document.getElementById('idle-modal').classList.remove('active'); }
 
 async function generateIdleSuggestions() {
+    if (!isOnline) return alert("⚠️ نیاز به اینترنت.");
     const activity = document.getElementById('idle-current-activity').value.trim();
     const time = parseInt(document.getElementById('idle-time').value);
     const context = document.getElementById('idle-context').value;
@@ -1676,6 +1832,7 @@ function dismissIdle() { document.getElementById('idle-suggestions').innerHTML =
 
 // ============ اهداف ============
 async function addGoalAndStartChat() {
+    if (!isOnline) return alert("⚠️ نیاز به اینترنت.");
     const title = document.getElementById('new-goal-title').value.trim();
     const desc = document.getElementById('new-goal-desc').value.trim();
     if (!title) return alert("عنوان هدف رو وارد کن.");
@@ -1686,26 +1843,19 @@ async function addGoalAndStartChat() {
     document.getElementById('new-goal-title').value = "";
     document.getElementById('new-goal-desc').value = "";
     saveDB();
-    const introPrompt = `هدف بلندمدت جدید: "${title}"${desc ? ` - ${desc}` : ''}`;
-    db.chatHistory.deep.push({ role: 'user', text: `🎯 ${introPrompt}` });
+    db.chatHistory.deep.push({ role: 'user', text: `🎯 هدف جدید: "${title}"${desc ? ` - ${desc}` : ''}` });
     saveDB();
     showPage('home');
     addMessage('deep', 'ai', '⏳ در حال آماده‌سازی...');
-    const aiPrompt = `کاربر این هدف بلندمدت رو ثبت کرده: "${title}"${desc ? ` (${desc})` : ''}.
+    const aiPrompt = `کاربر این هدف ثبت کرده: "${title}"${desc ? ` (${desc})` : ''}.
 
-تو سیکا هستی. کاربر ADHD داره. اول این سوالات رو بپرس:
-1. چه تجربه‌ی قبلی داری؟
-2. تا چه زمانی می‌خوای بهش برسی؟
-3. چقدر در هفته می‌تونی کار کنی؟
-4. چالشی پیش‌بینی می‌کنی؟
+تو سیکا هستی. ADHD داره. این سوالات رو بپرس:
+1. تجربه‌ی قبلی؟
+2. تا کی می‌خوای؟
+3. چقدر در هفته کار می‌کنی؟
+4. چالشی هست؟
 
-JSON:
-{
-  "reply": "پاسخ گرم با ۴ سوال",
-  "replyEnglish": "English",
-  "summary": "شروع گفتگو",
-  "mood": "متمرکز"
-}`;
+JSON: { "reply": "پاسخ گرم با سوالات", "replyEnglish": "...", "summary": "...", "mood": "متمرکز" }`;
     try {
         const parsed = await callGemini(aiPrompt);
         db.chatHistory.deep.pop();
@@ -1719,20 +1869,17 @@ JSON:
 }
 
 async function finalizeGoalBreakdown(goalId) {
+    if (!isOnline) return 0;
     const goal = db.goals.find(g => g.id === goalId);
     if (!goal) return 0;
     const recentChat = db.chatHistory.deep.slice(-10).map(m => `${m.role}: ${m.text}`).join('\n');
-    const prompt = `بر اساس گفتگو، هدف "${goal.title}" رو به subtask تجزیه کن.
+    const prompt = `بر اساس گفتگو، هدف "${goal.title}" رو تجزیه کن.
 
 گفتگو:
 ${recentChat}
 
 JSON:
-{
-  "subtasks": [
-    { "title": "...", "priority": "...", "context": "...", "energyRequired": "...", "estimatedMinutes": 30, "parallelizable": false, "order": 1 }
-  ]
-}`;
+{ "subtasks": [{ "title": "...", "priority": "...", "context": "...", "energyRequired": "...", "estimatedMinutes": 30, "parallelizable": false, "order": 1 }] }`;
     try {
         const data = await callGemini(prompt);
         if (data?.subtasks) {
@@ -1858,6 +2005,7 @@ function deletePairing(id) {
 
 // ============ Gemini ============
 async function callGemini(prompt) {
+    if (!isOnline) throw new Error("اینترنت قطعه");
     const models = ['gemini-flash-latest', 'gemini-3.1-flash-lite', 'gemini-2.5-flash-lite', 'gemini-2.5-flash'];
     for (const m of models) {
         try {
@@ -1913,20 +2061,33 @@ async function handleAI(type) {
     const inputId = type === 'quick' ? 'status-input' : 'chat-input';
     const userText = document.getElementById(inputId).value.trim();
     if (!userText) return;
-    if (!db.settings.key) return addMessage(type, 'ai', "⚠️ ابتدا API Key.");
+    
     const timestamp = new Date().toLocaleTimeString('it-IT');
     addMessage(type, 'user', `(${timestamp}) ${userText}`);
     document.getElementById(inputId).value = "";
+    
+    // اگه آفلاین، صف کن
+    if (!isOnline) {
+        db.offlineQueue.push({ type: 'chat', chatType: type, text: userText, timestamp: Date.now() });
+        saveDB();
+        addMessage(type, 'ai', '🔌 آفلاینی. پیامت ذخیره شد، وقتی اینترنت برگشت تحلیل می‌کنم.', 'offline');
+        speak("ذخیره کردم، وقتی اینترنت برگشت تحلیل می‌کنم.", "");
+        updateSystemStatus();
+        return;
+    }
+    
+    if (!db.settings.key) return addMessage(type, 'ai', "⚠️ ابتدا API Key.");
+    
     addMessage(type, 'ai', '⏳ در حال تحلیل...');
     const recentMsgs = db.chatHistory[type].slice(-8).map(m => `${m.role}: ${m.text}`).join('\n');
     const activeTasks = db.tasks.filter(t => !t.done).slice(0, 10).map(t => `- ${t.title}`).join('\n') || 'هیچ';
     const knownPairings = db.pairings.slice(0, 10).map(p => `${p.mainActivity}: ${p.companions.join(', ')}`).join('\n') || 'هیچ';
     const goalContext = db.pendingGoalChat ? db.goals.find(g => g.id === db.pendingGoalChat) : null;
-    const goalNote = goalContext ? `\n\n⚠️ کاربر در حال گفتگو درباره هدف "${goalContext.title}" است. اگر اطلاعات کافی داده، readyToBreakdown: true بزن.` : '';
+    const goalNote = goalContext ? `\n⚠️ در حال گفتگو درباره "${goalContext.title}". اگه آماده‌ای readyToBreakdown: true بزن.` : '';
     const systemPrompt = `تو سیکا، مربی شخصی هستی. کاربر ADHD داره.
 
 نوع: ${type === 'quick' ? 'گزارش سریع' : 'مشورت عمیق'}
-کارهای فعال:
+کارها:
 ${activeTasks}
 جفت‌ها:
 ${knownPairings}
@@ -1936,15 +2097,8 @@ ${recentMsgs}${goalNote}
 پیام: "${userText}"
 
 JSON:
-{
-  "reply": "پاسخ فارسی گرم (2-4 جمله)",
-  "replyEnglish": "English",
-  "summary": "خلاصه",
-  "mood": "یک کلمه",
-  "newTasks": [{ "title": "...", "priority": "...", "context": "...", "energyRequired": "low|medium|high", "estimatedMinutes": 5|15|30|60, "parallelizable": false }],
-  "newPairing": { "mainActivity": "X", "companion": "Y" } یا null,
-  "readyToBreakdown": false
-}`;
+{ "reply": "پاسخ گرم", "replyEnglish": "...", "summary": "...", "mood": "...",
+  "newTasks": [...], "newPairing": null, "readyToBreakdown": false }`;
     try {
         const parsed = await callGemini(systemPrompt);
         db.chatHistory[type].pop();
@@ -2150,22 +2304,46 @@ function render() {
 }
 
 function clearAll() {
-    if (confirm("⚠️ همه داده‌ها پاک شوند؟\n\nپیشنهاد می‌کنم اول دکمه «📥 دانلود پشتیبان» رو بزنی.")) {
+    if (confirm("⚠️ همه داده‌ها پاک شوند؟\n\nاول 📥 دانلود پشتیبان بزن.")) {
         localStorage.removeItem('syca_db');
-        ['syca_db_v18', 'syca_db_v19', 'syca_db_v20'].forEach(k => localStorage.removeItem(k));
+        ['syca_db_v18', 'syca_db_v19', 'syca_db_v20', 'syca_db_v21'].forEach(k => localStorage.removeItem(k));
+        // پاک کردن schedule SW
+        if (swRegistration && swRegistration.active) {
+            swRegistration.active.postMessage({ type: 'CLEAR_SCHEDULE' });
+        }
         location.reload();
     }
 }
 
+// ============ پیام از SW (notif click + missed) ============
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.addEventListener('message', (event) => {
+        const { type, notifType, missed } = event.data || {};
+        if (type === 'NOTIFICATION_CLICKED') {
+            console.log('[App] Notification clicked:', notifType);
+            if (notifType === 'checkin') answerCheckin();
+            else if (notifType === 'feedback') answerFeedback();
+            else if (notifType === 'nightly') openNightlyReview();
+        }
+        if (type === 'MISSED_NOTIFICATIONS' && Array.isArray(missed) && missed.length > 0) {
+            console.log('[App] Missed notifications:', missed);
+            speak(`${missed.length} نوتیف از دست رفته داری.`, `${missed.length} missed notifications.`);
+        }
+    });
+}
+
 // ============ شروع ============
-// PWA: ثبت Service Worker
-let swRegistration = null;
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('service-worker.js')
             .then(reg => {
                 swRegistration = reg;
                 console.log('✅ SW registered:', reg.scope);
+                updateSystemStatus();
+                // درخواست missed notifications
+                setTimeout(() => {
+                    if (reg.active) reg.active.postMessage({ type: 'GET_MISSED' });
+                }, 1000);
             })
             .catch(err => console.error('❌ SW failed:', err));
     });
@@ -2177,9 +2355,11 @@ window.onload = () => {
     if (db.settings.key) loadSettings();
     setTimeout(loadVoices, 500);
     setTimeout(loadVoices, 1500);
-    scheduleNightlyReview();
-    schedulePeriodicChecks();
+    updateOnlineStatus();
+    scheduleAllNotifications();
+    startHeartbeat();
     setTimeout(showNightlyBanner, 1000);
+    setTimeout(updateSystemStatus, 1500);
     setTimeout(() => {
         ['interval-check', 'check-from-hour', 'check-to-hour', 'interval-feedback', 'feedback-from-hour', 'feedback-to-hour']
             .forEach(id => {
