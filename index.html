@@ -15,8 +15,10 @@
     <script>
       window.OneSignalDeferred = window.OneSignalDeferred || [];
       OneSignalDeferred.push(async function(OneSignal) {
-        await OneSignal.init({
+await OneSignal.init({
           appId: "6fc6f316-1014-4389-a9b0-3a06ccf21863",
+          serviceWorkerPath: "OneSignalSDKWorker.js",
+          serviceWorkerParam: { scope: "/my-ai-assistant/" },
           notifyButton: {
             enable: false,
           },
