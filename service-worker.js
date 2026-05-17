@@ -85,13 +85,25 @@ async function showNotificationFromSW(payload) {
         requireInteraction: payload.requireInteraction !== false,
         dir: 'rtl',
         lang: 'fa',
-        vibrate: payload.vibrate || [200, 100, 200],
+        // ویبره قوی و طولانی برای جلب توجه
+        vibrate: payload.vibrate || [500, 200, 500, 200, 500, 200, 1000],
+        // اولویت بالا
+        priority: 'high',
+        // renotify اگه tag تکراری بود، باز نوتیف رو نشون می‌ده
+        renotify: true,
+        // silent: false مطمئن می‌شه صدا داره
+        silent: false,
+        // timestamp برای اولویت سیستم
+        timestamp: Date.now(),
         data: {
             url: payload.url || './',
             type: payload.type || 'general',
             timestamp: Date.now()
         }
     };
+    
+    return self.registration.showNotification(payload.title || 'سیکا', options);
+}
     
     return self.registration.showNotification(payload.title || 'سیکا', options);
 }
