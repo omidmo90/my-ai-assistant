@@ -617,20 +617,14 @@
             <div style="margin-top:20px; padding:15px; background:#000; border-radius:12px; border:1px solid var(--blue);">
                 <label style="color:var(--blue)">📅 همگام‌سازی با Google Calendar</label>
                 <div style="font-size:0.7rem; color:var(--muted); margin-bottom:10px; line-height:1.7;">
-                    یه فایل دانلود می‌کنی، با Calendar بازش می‌کنی، و event ها <b>برای همیشه تکرار می‌شن</b> بر اساس تنظیمات بالا.
+                    یه فایل دانلود می‌کنی برای <b>از امروز تا شنبه‌ی این هفته</b>، با Calendar بازش می‌کنی، و Calendar بهت نوتیف می‌فرسته. هر وقت لازم داشتی دوباره می‌گیری.
                 </div>
-                <button onclick="downloadCalendarFile('daily')" style="width:100%; background:var(--blue); color:white; border:none; padding:12px; border-radius:12px; cursor:pointer; margin-bottom:8px; font-size:0.85rem;">
-                    📥 هر روز (تکرار روزانه)
+                <button onclick="downloadCalendarFile()" style="width:100%; background:var(--blue); color:white; border:none; padding:14px; border-radius:12px; cursor:pointer; font-size:0.9rem; font-weight:bold;">
+                    📥 دانلود برنامه (از امروز تا شنبه)
                 </button>
-                <button onclick="downloadCalendarFile('workdays')" style="width:100%; background:var(--primary); color:white; border:none; padding:12px; border-radius:12px; cursor:pointer; margin-bottom:8px; font-size:0.85rem;">
-                    📥 فقط روزهای کاری (دوشنبه-جمعه)
-                </button>
-                <button onclick="downloadCalendarFile('weekend')" style="width:100%; background:var(--cyan); color:white; border:none; padding:12px; border-radius:12px; cursor:pointer; margin-bottom:8px; font-size:0.85rem;">
-                    📥 فقط آخر هفته (شنبه-یکشنبه)
-                </button>
-                <div style="font-size:0.65rem; color:var(--muted); margin-top:8px; line-height:1.6;">
-                    💡 <b>یک بار</b> دانلود می‌کنی → با Calendar باز می‌کنی → <b>برای همیشه</b> نوتیف میاد.<br>
-                    ⚠️ اگه قبلاً اضافه کرده بودی، اول event های قبلی رو از Calendar پاک کن.
+                <div style="font-size:0.65rem; color:var(--muted); margin-top:10px; line-height:1.6;">
+                    💡 بر اساس تنظیمات بالا (چک‌ین + فیدبک + مرور شبانه) ساخته می‌شه.<br>
+                    ⚠️ اگه قبلاً اضافه کردی، اول event های قدیمی رو از Calendar پاک کن.
                 </div>
             </div>
 
@@ -1428,7 +1422,7 @@ function generateICSFile(events) {
     return ics;
 }
 
-function downloadCalendarFile(scope) {
+function downloadCalendarFile() {
     const interval = parseInt(db.settings.checkInterval) || 0;
     const fbInterval = parseInt(db.settings.feedbackInterval) || 0;
     
@@ -1447,87 +1441,83 @@ function downloadCalendarFile(scope) {
         return alert("⚠️ تنظیمات ساعت‌ها رو در بالا کامل کن.");
     }
     
+    // محاسبه‌ی روزهای باقی‌مونده تا آخر هفته (شنبه)
+    // در JavaScript: Sunday=0, Monday=1, ..., Saturday=6
+    const now = new Date();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const todayDayOfWeek = today.getDay(); // 0=Sunday, 6=Saturday
+    // محاسبه چند روز تا شنبه (آخر هفته):
+    // اگه امروز شنبه باشه = 0 روز (فقط امروز)
+    // اگه جمعه = 1 روز
+    // اگه پنجشنبه = 2 روز
+    // و غیره
+    const daysUntilSaturday = (6 - todayDayOfWeek + 7) % 7;
+    const daysToGenerate = daysUntilSaturday + 1; // شامل امروز و شنبه
+    
     const events = [];
-    let fileName = '';
-    let rrule = '';
     
-    // تنظیم RRULE بر اساس scope
-    if (scope === 'daily') {
-        // تکرار روزانه برای همیشه
-        rrule = 'FREQ=DAILY';
-        fileName = 'syca-daily.ics';
-    } else if (scope === 'workdays') {
-        // فقط روزهای کاری (دوشنبه تا جمعه)
-        rrule = 'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR';
-        fileName = 'syca-workdays.ics';
-    } else if (scope === 'weekend') {
-        // فقط آخر هفته (شنبه و یکشنبه)
-        rrule = 'FREQ=WEEKLY;BYDAY=SA,SU';
-        fileName = 'syca-weekend.ics';
-    }
-    
-    // تاریخ شروع: امروز
-    const startDay = new Date();
-    startDay.setHours(0, 0, 0, 0);
-    
-    // محاسبه‌ی همه‌ی زمان‌های چک‌ین
-    if (interval > 0) {
-        for (let h = checkFrom; h <= checkTo; h += interval) {
-            const firstTime = new Date(startDay);
-            firstTime.setHours(h, 0, 0, 0);
-            
-            // اگه زمان امروز گذشته، از فردا شروع کن
-            if (firstTime < new Date()) {
-                firstTime.setDate(firstTime.getDate() + 1);
+    for (let d = 0; d < daysToGenerate; d++) {
+        const targetDay = new Date(today);
+        targetDay.setDate(targetDay.getDate() + d);
+        
+        // چک‌ین‌ها
+        if (interval > 0) {
+            for (let h = checkFrom; h <= checkTo; h += interval) {
+                const eventTime = new Date(targetDay);
+                eventTime.setHours(h, 0, 0, 0);
+                // فقط زمان‌های آینده
+                if (eventTime > now) {
+                    events.push(generateRecurringEvent(
+                        '📍 سیکا - بررسی وضعیت',
+                        'الان کجایی و مشغول چه کاری هستی؟ برو به اپ Syca جواب بده.',
+                        eventTime,
+                        5,
+                        null  // بدون تکرار
+                    ));
+                }
             }
-            
+        }
+        
+        // فیدبک‌ها
+        if (fbInterval > 0) {
+            for (let h = fbFrom; h <= fbTo; h += fbInterval) {
+                const eventTime = new Date(targetDay);
+                eventTime.setHours(h, 0, 0, 0);
+                if (eventTime > now) {
+                    events.push(generateRecurringEvent(
+                        '📊 سیکا - فیدبک',
+                        'کارها چطور پیش رفت؟ یه گزارش بده.',
+                        eventTime,
+                        5,
+                        null
+                    ));
+                }
+            }
+        }
+        
+        // مرور شبانه
+        const nightlyTime = new Date(targetDay);
+        nightlyTime.setHours(nightH, nightM, 0, 0);
+        if (nightlyTime > now) {
             events.push(generateRecurringEvent(
-                '📍 سیکا - بررسی وضعیت',
-                'الان کجایی و مشغول چه کاری هستی؟ برو به اپ Syca جواب بده.',
-                firstTime,
-                5,
-                rrule
+                '🌙 سیکا - مرور شبانه',
+                'وقتشه برای فردا برنامه‌ریزی کنیم. برو به اپ Syca.',
+                nightlyTime,
+                10,
+                null
             ));
         }
     }
-    
-    // محاسبه‌ی همه‌ی زمان‌های فیدبک
-    if (fbInterval > 0) {
-        for (let h = fbFrom; h <= fbTo; h += fbInterval) {
-            const firstTime = new Date(startDay);
-            firstTime.setHours(h, 0, 0, 0);
-            
-            if (firstTime < new Date()) {
-                firstTime.setDate(firstTime.getDate() + 1);
-            }
-            
-            events.push(generateRecurringEvent(
-                '📊 سیکا - فیدبک',
-                'کارها چطور پیش رفت؟ یه گزارش بده.',
-                firstTime,
-                5,
-                rrule
-            ));
-        }
-    }
-    
-    // مرور شبانه - فقط روزانه (مهم نیست workday یا weekend)
-    const nightlyTime = new Date(startDay);
-    nightlyTime.setHours(nightH, nightM, 0, 0);
-    if (nightlyTime < new Date()) {
-        nightlyTime.setDate(nightlyTime.getDate() + 1);
-    }
-    events.push(generateRecurringEvent(
-        '🌙 سیکا - مرور شبانه',
-        'وقتشه برای فردا برنامه‌ریزی کنیم. برو به اپ Syca.',
-        nightlyTime,
-        10,
-        rrule
-    ));
     
     if (events.length === 0) {
-        return alert("⚠️ هیچ event ای ساخته نشد. تنظیمات رو چک کن.");
+        return alert("⚠️ هیچ event آینده‌ای پیدا نشد. شاید همه‌ی زمان‌های امروز گذشته باشن.");
     }
+    
+    // ساخت اسم فایل
+    const todayStr = today.toISOString().split('T')[0];
+    const fileName = `syca-${todayStr}-week.ics`;
     
     const icsContent = generateICSFile(events);
     const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
@@ -1540,8 +1530,10 @@ function downloadCalendarFile(scope) {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     
-    const scopeText = scope === 'daily' ? 'هر روز' : scope === 'workdays' ? 'روزهای کاری' : 'آخر هفته';
-    alert(`✅ ${events.length} event تکراری (${scopeText}) دانلود شد!\n\nروی فایل کلیک کن تا با Calendar باز بشه.\nاین event ها برای همیشه تکرار می‌شن.`);
+    const dayNames = ['یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه', 'شنبه'];
+    const todayName = dayNames[todayDayOfWeek];
+    
+    alert(`✅ ${events.length} event دانلود شد!\n\nاز امروز (${todayName}) تا شنبه‌ی این هفته.\nروی فایل کلیک کن تا با Calendar باز بشه.`);
 }
 
 // ============ نوتیفیکیشن ============
