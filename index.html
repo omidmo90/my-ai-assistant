@@ -601,6 +601,9 @@
             <button onclick="testVoice()" style="width:100%; margin-top:10px; background:var(--blue); color:white; border:none; padding:12px; border-radius:12px; cursor:pointer;">
                 🔊 تست صدا
             </button>
+            <button onclick="testVoicePack()" style="width:100%; margin-top:10px; background:var(--pink); color:white; border:none; padding:12px; border-radius:12px; cursor:pointer;">
+                🎵 تست پک صوتی (همه‌ی صداها)
+            </button>
             <button onclick="triggerCheckinNow()" style="width:100%; margin-top:10px; background:var(--cyan); color:white; border:none; padding:12px; border-radius:12px; cursor:pointer;">
                 📍 تست چک‌این (الان)
             </button>
@@ -910,6 +913,7 @@ function updateOnlineStatus() {
         if (banner) banner.style.display = 'flex';
         // اعلام صوتی
         speak("اینترنت قطعه. حالت آفلاین فعال شد.", "Internet disconnected. Offline mode active.");
+        playSound('offline');
     }
     updateSystemStatus();
 }
@@ -1153,6 +1157,44 @@ function speak(persianText, englishText) {
     } catch (e) { console.error("Speak error:", e); }
 }
 
+// ============ Voice Pack - پخش فایل صوتی ============
+const VOICE_FILES = {
+    'checkin': 'sounds/checkin.mp3',
+    'feedback': 'sounds/feedback.mp3',
+    'nightly': 'sounds/nightly.mp3',
+    'offline': 'sounds/offline.mp3',
+    'missed': 'sounds/missed.mp3',
+    'checkin_alt': 'sounds/checkin_alt.mp3',
+    'feedback_alt': 'sounds/feedback_alt.mp3',
+    'task_done': 'sounds/task_done.mp3'
+};
+
+let currentAudio = null;
+
+function playSound(soundKey) {
+    try {
+        const mode = db.settings.voiceMode || "auto";
+        if (mode === "off") return;
+        const file = VOICE_FILES[soundKey];
+        if (!file) {
+            console.warn('[Sound] Unknown key:', soundKey);
+            return;
+        }
+        // متوقف کردن صدای قبلی
+        if (currentAudio) {
+            currentAudio.pause();
+            currentAudio.currentTime = 0;
+        }
+        currentAudio = new Audio(file);
+        currentAudio.volume = 1.0;
+        currentAudio.play().catch(err => {
+            console.warn('[Sound] Play failed:', err);
+        });
+    } catch (e) {
+        console.error('[Sound] Error:', e);
+    }
+}
+
 // ============ پر کردن select ساعت‌ها ============
 function populateHourSelects() {
     ['check-from-hour', 'check-to-hour', 'feedback-from-hour', 'feedback-to-hour'].forEach(id => {
@@ -1273,6 +1315,32 @@ function testVoice() {
     if (availableVoices.length === 0) loadVoices();
     if (!persianVoice && !englishVoice) return alert("⚠️ صدا نصب نیست.");
     speak("سلام، تست صدا.", "Hello, voice test.");
+}
+
+function testVoicePack() {
+    const sounds = ['checkin', 'feedback', 'nightly', 'offline', 'missed', 'checkin_alt', 'feedback_alt', 'task_done'];
+    const names = {
+        'checkin': '📍 چک‌این',
+        'feedback': '📊 فیدبک',
+        'nightly': '🌙 مرور شبانه',
+        'offline': '🔌 آفلاین',
+        'missed': '⏰ نوتیف از دست رفته',
+        'checkin_alt': '📍 چک‌این (آلترناتیو)',
+        'feedback_alt': '📊 فیدبک (آلترناتیو)',
+        'task_done': '✅ کار تموم شد'
+    };
+    let i = 0;
+    function playNext() {
+        if (i >= sounds.length) {
+            alert("✅ تست پک صوتی تموم شد!");
+            return;
+        }
+        console.log('Playing:', names[sounds[i]]);
+        playSound(sounds[i]);
+        i++;
+        setTimeout(playNext, 4500);
+    }
+    playNext();
 }
 
 function triggerCheckinNow() { triggerCheckin(); alert("✅ چک‌این فعال شد."); }
@@ -1517,7 +1585,10 @@ function triggerCheckin() {
     }
     
     if (method === "notif" || method === "both") sendNotif("📍 سیکا - بررسی وضعیت", question, () => answerCheckin());
-    if (method === "voice" || method === "both") speak(question, questionEn);
+    if (method === "voice" || method === "both") {
+        playSound('checkin');
+        setTimeout(() => speak(question, questionEn), 4000);
+    }
     showCheckinBanner();
     render();
 }
@@ -1567,7 +1638,11 @@ function triggerFeedback() {
     }
 
     if (method === "notif" || method === "both") sendNotif("📊 سیکا - فیدبک", question, () => answerFeedback());
-    if (method === "voice" || method === "both") speak(question, questionEn);
+    if (method === "voice" || method === "both") {
+        // اگه کار اخیر داره از feedback اصلی استفاده کن، وگرنه از alt
+        playSound(recentDone.length > 0 ? 'feedback' : 'feedback_alt');
+        setTimeout(() => speak(question, questionEn), 4000);
+    }
 
     db._pendingFeedbackQuestion = question;
     saveDB();
@@ -1601,6 +1676,7 @@ function triggerNightlyReview() {
         sendNotif('🌙 سیکا - مرور شبانه', 'وقتشه برای فردا برنامه‌ریزی کنیم.', () => openNightlyReview());
     }
     speak("وقت مرور شبانه است.", "Time for nightly review.");
+    playSound('nightly');
     showNightlyBanner();
 }
 
@@ -1988,9 +2064,14 @@ function quickAddTask() {
 function toggleTask(id) {
     const task = db.tasks.find(t => t.id === id);
     if (task) {
+        const wasIncomplete = !task.done;
         task.done = !task.done;
-        if (task.done) task.doneAt = new Date().toISOString();
-        else delete task.doneAt;
+        if (task.done) {
+            task.doneAt = new Date().toISOString();
+            if (wasIncomplete) playSound('task_done');
+        } else {
+            delete task.doneAt;
+        }
         saveDB();
         render();
     }
@@ -2337,6 +2418,7 @@ if ('serviceWorker' in navigator) {
         if (type === 'MISSED_NOTIFICATIONS' && Array.isArray(missed) && missed.length > 0) {
             console.log('[App] Missed notifications:', missed);
             speak(`${missed.length} نوتیف از دست رفته داری.`, `${missed.length} missed notifications.`);
+            playSound('missed');
         }
     });
 }
