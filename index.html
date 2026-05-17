@@ -1336,12 +1336,20 @@ function scheduleNotificationViaSW(notification, triggerAt) {
         console.warn('[App] SW not ready for scheduling');
         return false;
     }
+    // اضافه کردن تنظیمات ویبره و صدا به notification
+    const enhancedNotification = {
+        ...notification,
+        vibrate: notification.vibrate || [500, 200, 500, 200, 500, 200, 1000],
+        requireInteraction: true,
+        silent: false,
+        renotify: true
+    };
     swRegistration.active.postMessage({
         type: 'SCHEDULE_NOTIFICATION',
         payload: {
             id: 'sched-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
             triggerAt,
-            notification
+            notification: enhancedNotification
         }
     });
     return true;
@@ -1405,39 +1413,80 @@ function scheduleAllCheckins() {
     const toH = parseInt(db.settings.checkToHour);
     if (isNaN(fromH) || isNaN(toH)) return;
     
-    // زمان‌بندی همه‌ی چک‌این‌های ۲۴ ساعت آینده در SW
     const times = computeScheduledTimes(interval, fromH, toH);
     const now = new Date();
     
     times.forEach(h => {
-        // امروز
         const today = new Date();
         today.setHours(h, 0, 0, 0);
-        if (today > now) {
+        // فقط زمان‌های آینده، نه گذشته
+        if (today.getTime() > now.getTime() + 30000) { // حداقل ۳۰ ثانیه از الان
             scheduleNotificationViaSW({
                 title: '📍 سیکا - بررسی وضعیت',
                 body: 'الان کجایی و مشغول چه کاری هستی؟',
                 type: 'checkin',
-                url: './'
+                url: './',
+                tag: 'syca-checkin-' + today.toISOString().split('T')[0] + '-' + h
             }, today.getTime());
         }
-        // فردا
         const tomorrow = new Date(today);
         tomorrow.setDate(tomorrow.getDate() + 1);
         scheduleNotificationViaSW({
             title: '📍 سیکا - بررسی وضعیت',
             body: 'الان کجایی و مشغول چه کاری هستی؟',
             type: 'checkin',
-            url: './'
+            url: './',
+            tag: 'syca-checkin-' + tomorrow.toISOString().split('T')[0] + '-' + h
         }, tomorrow.getTime());
     });
     
-    // در زمان لایو (وقتی اپ بازه) هم trigger می‌کنیم
     const next = findNextScheduledTime(interval, fromH, toH);
     if (next) {
         const delay = next - new Date();
         checkTimer = setTimeout(() => { triggerCheckin(); scheduleAllCheckins(); }, delay);
         console.log(`Next checkin in ${(delay/1000/60).toFixed(1)} min`);
+    }
+}
+
+function scheduleAllFeedbacks() {
+    if (feedbackTimer) clearTimeout(feedbackTimer);
+    const interval = parseInt(db.settings.feedbackInterval) || 0;
+    if (interval === 0) return;
+    const fromH = parseInt(db.settings.feedbackFromHour);
+    const toH = parseInt(db.settings.feedbackToHour);
+    if (isNaN(fromH) || isNaN(toH)) return;
+    
+    const times = computeScheduledTimes(interval, fromH, toH);
+    const now = new Date();
+    
+    times.forEach(h => {
+        const today = new Date();
+        today.setHours(h, 0, 0, 0);
+        if (today.getTime() > now.getTime() + 30000) {
+            scheduleNotificationViaSW({
+                title: '📊 سیکا - فیدبک',
+                body: 'کارها چطور پیش رفت؟',
+                type: 'feedback',
+                url: './',
+                tag: 'syca-feedback-' + today.toISOString().split('T')[0] + '-' + h
+            }, today.getTime());
+        }
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        scheduleNotificationViaSW({
+            title: '📊 سیکا - فیدبک',
+            body: 'کارها چطور پیش رفت؟',
+            type: 'feedback',
+            url: './',
+            tag: 'syca-feedback-' + tomorrow.toISOString().split('T')[0] + '-' + h
+        }, tomorrow.getTime());
+    });
+    
+    const next = findNextScheduledTime(interval, fromH, toH);
+    if (next) {
+        const delay = next - new Date();
+        feedbackTimer = setTimeout(() => { triggerFeedback(); scheduleAllFeedbacks(); }, delay);
+        console.log(`Next feedback in ${(delay/1000/60).toFixed(1)} min`);
     }
 }
 
@@ -2350,6 +2399,16 @@ if ('serviceWorker' in navigator) {
 }
 
 window.onload = () => {
+    // پاک کردن schedule های اشتباه (یک‌بار)
+    if (!localStorage.getItem('syca_schedule_cleared_v22_1')) {
+        setTimeout(() => {
+            if (swRegistration && swRegistration.active) {
+                swRegistration.active.postMessage({ type: 'CLEAR_SCHEDULE' });
+                console.log('✅ Cleared duplicate schedules');
+            }
+            localStorage.setItem('syca_schedule_cleared_v22_1', 'true');
+        }, 2000);
+    }
     applyChatHeight();
     render();
     if (db.settings.key) loadSettings();
