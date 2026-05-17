@@ -1457,6 +1457,7 @@ function downloadCalendarFile() {
     const daysToGenerate = daysUntilSaturday + 1; // شامل امروز و شنبه
     
     const events = [];
+    const SYCA_URL = 'https://omidmo90.github.io/my-ai-assistant/';
     
     for (let d = 0; d < daysToGenerate; d++) {
         const targetDay = new Date(today);
@@ -1471,7 +1472,7 @@ function downloadCalendarFile() {
                 if (eventTime > now) {
                     events.push(generateRecurringEvent(
                         '📍 سیکا - بررسی وضعیت',
-                        'الان کجایی و مشغول چه کاری هستی؟ برو به اپ Syca جواب بده.',
+                        `الان کجایی و مشغول چه کاری هستی؟\\n\\n👇 برای جواب دادن کلیک کن:\\n${SYCA_URL}?action=checkin`,
                         eventTime,
                         5,
                         null  // بدون تکرار
@@ -1488,7 +1489,7 @@ function downloadCalendarFile() {
                 if (eventTime > now) {
                     events.push(generateRecurringEvent(
                         '📊 سیکا - فیدبک',
-                        'کارها چطور پیش رفت؟ یه گزارش بده.',
+                        `کارها چطور پیش رفت؟ یه گزارش بده.\\n\\n👇 برای جواب دادن کلیک کن:\\n${SYCA_URL}?action=feedback`,
                         eventTime,
                         5,
                         null
@@ -1503,7 +1504,7 @@ function downloadCalendarFile() {
         if (nightlyTime > now) {
             events.push(generateRecurringEvent(
                 '🌙 سیکا - مرور شبانه',
-                'وقتشه برای فردا برنامه‌ریزی کنیم. برو به اپ Syca.',
+                `وقتشه برای فردا برنامه‌ریزی کنیم.\\n\\n👇 برای شروع کلیک کن:\\n${SYCA_URL}?action=nightly`,
                 nightlyTime,
                 10,
                 null
@@ -2647,7 +2648,80 @@ window.onload = () => {
                 if (el) el.addEventListener('change', updateScheduleInfo);
             });
     }, 100);
+    // پردازش URL action از Calendar
+    setTimeout(handleURLAction, 2000);
 };
+
+// ============ پردازش URL Actions از Calendar ============
+function handleURLAction() {
+    try {
+        const params = new URLSearchParams(window.location.search);
+        const action = params.get('action');
+        const source = params.get('source');
+        
+        if (!action) return;
+        
+        console.log('[URL Action]', action, 'from', source);
+        
+        // پاک کردن URL params تا اگه refresh کرد، دوباره فعال نشه
+        if (window.history && window.history.replaceState) {
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+        
+        // اجرای action مناسب
+        switch (action) {
+            case 'checkin':
+                console.log('[Action] Triggering checkin from Calendar');
+                showPage('home');
+                setTimeout(() => {
+                    db.pendingCheckin = true;
+                    saveDB();
+                    showCheckinBanner();
+                    playSound('checkin');
+                    setTimeout(() => {
+                        const input = document.getElementById('status-input');
+                        if (input) {
+                            input.focus();
+                            input.placeholder = "📍 الان کجایی و چی کار می‌کنی؟";
+                        }
+                        addMessage('quick', 'ai', '📍 الان کجایی و مشغول چه کاری هستی؟', 'checkin');
+                    }, 500);
+                }, 300);
+                break;
+                
+            case 'feedback':
+                console.log('[Action] Triggering feedback from Calendar');
+                showPage('home');
+                setTimeout(() => {
+                    db.pendingFeedback = true;
+                    db._pendingFeedbackQuestion = "کارها چطور پیش رفت؟";
+                    saveDB();
+                    showFeedbackBanner();
+                    playSound('feedback');
+                    setTimeout(() => {
+                        const input = document.getElementById('chat-input');
+                        if (input) input.focus();
+                        addMessage('deep', 'ai', '📊 کارها چطور پیش رفت؟ یه گزارش بده.', 'feedback-req');
+                    }, 500);
+                }, 300);
+                break;
+                
+            case 'nightly':
+                console.log('[Action] Triggering nightly review from Calendar');
+                showPage('home');
+                playSound('nightly');
+                setTimeout(() => {
+                    openNightlyReview();
+                }, 1000);
+                break;
+                
+            default:
+                console.log('[Action] Unknown:', action);
+        }
+    } catch (e) {
+        console.error('[URL Action] Error:', e);
+    }
+}
 </script>
 </body>
 </html>
