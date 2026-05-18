@@ -307,6 +307,15 @@
             <div id="mood-indicator" class="mood-indicator"></div>
         </div>
 
+        <!-- کارت برنامه‌ی امروز از تقویم -->
+        <div class="card" id="today-calendar-card" style="border-color: var(--cyan); display:none;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <label style="color:var(--cyan)">📅 برنامه‌ی امروز</label>
+                <button onclick="showPage('calendar')" style="background:transparent; color:var(--cyan); border:1px solid var(--cyan); padding:4px 10px; border-radius:8px; cursor:pointer; font-size:0.7rem;">نمای کامل ←</button>
+            </div>
+            <div id="today-calendar-content"></div>
+        </div>
+
         <div class="card idle-card">
             <label style="color:var(--orange)">⚡ الان وقت خالی دارم!</label>
             <div style="font-size:0.75rem; color:var(--muted); margin-bottom:10px;">
@@ -469,6 +478,83 @@
                 </div>
                 <div id="pairings-list"></div>
             </div>
+        </div>
+    </div>
+
+    <!-- ============ صفحه تقویم ============ -->
+    <div id="page-calendar" class="page">
+        <h1>📅 تقویم</h1>
+        
+        <!-- نمای ۳ ماه -->
+        <div class="card" id="cal-quarterly">
+            <h3 style="font-size:0.9rem; margin-bottom:8px;">📅 نمای ۳ ماه آینده</h3>
+            <div style="font-size:0.7rem; color:var(--muted); margin-bottom:12px;">ساعات کار برای هر فعالیت + هدف ماه</div>
+            <div id="quarterly-content">
+                <div style="text-align:center; padding:20px; color:var(--muted); font-size:0.8rem;">
+                    در حال ساخت...
+                </div>
+            </div>
+        </div>
+        
+        <!-- نمای ماهانه -->
+        <div class="card" id="cal-monthly">
+            <h3 style="font-size:0.9rem; margin-bottom:8px;">📆 نمای ماهانه</h3>
+            <div id="monthly-content">
+                <div style="text-align:center; padding:20px; color:var(--muted); font-size:0.8rem;">
+                    در حال ساخت...
+                </div>
+            </div>
+        </div>
+        
+        <!-- نمای هفتگی (مهم‌ترین - با id برای اسکرول) -->
+        <div class="card" id="cal-weekly">
+            <h3 style="font-size:0.9rem; margin-bottom:8px;">📊 برنامه‌ی هفته</h3>
+            <div id="weekly-header" style="font-size:0.7rem; color:var(--muted); margin-bottom:12px;">
+                در حال بارگذاری...
+            </div>
+            <div id="weekly-content">
+                <div style="text-align:center; padding:20px; color:var(--muted); font-size:0.8rem;">
+                    در حال ساخت...
+                </div>
+            </div>
+        </div>
+        
+        <!-- کارهای ریز امروز -->
+        <div class="card" id="cal-small-tasks">
+            <h3 style="font-size:0.9rem; margin-bottom:8px;">📝 کارهای ریز امروز</h3>
+            <div id="small-tasks-content">
+                <div style="text-align:center; padding:15px; color:var(--muted); font-size:0.75rem;">
+                    کاری ثبت نشده
+                </div>
+            </div>
+            <button onclick="addSmallTask()" style="width:100%; margin-top:10px; background:var(--blue); color:white; border:none; padding:10px; border-radius:10px; cursor:pointer; font-size:0.8rem;">
+                ➕ افزودن کار ریز
+            </button>
+        </div>
+        
+        <!-- چت برای تغییر -->
+        <div class="card" id="cal-chat">
+            <h3 style="font-size:0.9rem; margin-bottom:8px;">💬 با سیکا حرف بزن</h3>
+            <div style="font-size:0.7rem; color:var(--muted); margin-bottom:10px; line-height:1.6;">
+                می‌تونی تغییرات رو بگی. تغییرات شب پنج‌شنبه با مشورت اعمال می‌شه.
+            </div>
+            <div id="cal-chat-messages" style="max-height:200px; overflow-y:auto; margin-bottom:10px;"></div>
+            <div style="display:flex; gap:6px; align-items:center;">
+                <input type="text" id="cal-chat-input" placeholder="چی می‌خوای تغییر بدم؟" style="flex:1; padding:10px; border-radius:10px; border:1px solid var(--border); background:#000; color:white; font-size:0.85rem;" />
+                <button onclick="startCalVoice()" id="cal-voice-btn" style="padding:10px; background:var(--green); color:white; border:none; border-radius:10px; cursor:pointer; font-size:1rem;">🎤</button>
+                <button onclick="sendCalMessage()" style="padding:10px 14px; background:var(--blue); color:white; border:none; border-radius:10px; cursor:pointer; font-size:0.85rem;">ارسال</button>
+            </div>
+        </div>
+        
+        <!-- دکمه‌ی Generate Schedule -->
+        <div class="card" style="text-align:center;">
+            <div style="font-size:0.75rem; color:var(--muted); margin-bottom:10px; line-height:1.7;">
+                ⚠️ اگه برنامه نداری یا می‌خوای از صفر بسازی، روی دکمه‌ی پایین بزن.<br>
+                این کار با AI انجام می‌شه و چند ثانیه طول می‌کشه.
+            </div>
+            <button onclick="generateWeeklySchedule()" style="width:100%; background:var(--pink); color:white; border:none; padding:14px; border-radius:12px; cursor:pointer; font-size:0.9rem; font-weight:bold;">
+                🤖 ساخت برنامه‌ی جدید با AI
+            </button>
         </div>
     </div>
 
@@ -747,12 +833,13 @@
 <nav>
     <div onclick="showPage('home')" id="nav-home" class="active">🏠<br>امروز</div>
     <div onclick="showPage('strategy')" id="nav-strategy">🎯<br>کارها</div>
+    <div onclick="showPage('calendar')" id="nav-calendar">📅<br>تقویم</div>
     <div onclick="showPage('settings')" id="nav-settings">⚙️<br>تنظیمات</div>
 </nav>
 
 <script>
 // ============ سیستم Migration و دیتابیس ============
-const CURRENT_DB_VERSION = 22;
+const CURRENT_DB_VERSION = 23;
 
 function generateId() {
     return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
@@ -775,7 +862,17 @@ const DEFAULT_DB = {
     lastCheckinTime: null, lastFeedbackTime: null,
     pendingGoalChat: null,
     pendingCheckin: false, pendingFeedback: false,
-    offlineQueue: []
+    offlineQueue: [],
+    // ============ فاز ۱: ساختار schedule ============
+    schedule: {
+        weekly: {},          // { 'YYYY-MM-DD': [{ day: 0-6, period: 'morning|noon|afternoon|night', title, type: 'react|syca|normal', duration: 'short|medium|long|xlong', goalId?: string }] }
+        smallTasks: {},      // { 'YYYY-MM-DD': [{ id, text, done }] }
+        monthlyHours: {},    // { 'YYYY-MM': { 'React': 32, 'Syca': 40, 'ورزش': 12 } }
+        monthlyGoals: {},    // { 'YYYY-MM': 'متن هدف ماه' }
+        weeklyGoals: {},     // { 'YYYY-WW': 'متن هدف هفته' }
+        feedback: [],        // [{ date, type: 'positive|negative', text, schedule_id? }]
+        calChat: []          // [{ role, content, ts }] - پیام‌های چت تقویم
+    }
 };
 
 function migrateDB(oldDB) {
@@ -846,6 +943,18 @@ function migrateDB(oldDB) {
     // پاکسازی فیلدهای قدیمی OneSignal
     if (newDB.oneSignalId !== undefined) delete newDB.oneSignalId;
     if (Array.isArray(newDB.logs)) delete newDB.logs;
+
+    // v23: اضافه کردن schedule
+    if (!newDB.schedule) {
+        newDB.schedule = JSON.parse(JSON.stringify(DEFAULT_DB.schedule));
+    } else {
+        // اطمینان از وجود همه‌ی فیلدها
+        ['weekly', 'smallTasks', 'monthlyHours', 'monthlyGoals', 'weeklyGoals'].forEach(k => {
+            if (!newDB.schedule[k]) newDB.schedule[k] = {};
+        });
+        if (!Array.isArray(newDB.schedule.feedback)) newDB.schedule.feedback = [];
+        if (!Array.isArray(newDB.schedule.calChat)) newDB.schedule.calChat = [];
+    }
 
     newDB.dbVersion = CURRENT_DB_VERSION;
     return newDB;
@@ -1239,7 +1348,943 @@ function showPage(p) {
         updateDBInfo();
         updateSystemStatus();
     }
+    if (p === 'calendar') {
+        renderCalendarPage();
+        // اسکرول اتوماتیک به نمای هفته بعد از render
+        setTimeout(() => {
+            const weeklySection = document.getElementById('cal-weekly');
+            if (weeklySection) {
+                weeklySection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }, 200);
+    }
     render();
+}
+
+// ============ توابع تقویم ============
+
+// محاسبه‌ی شنبه و پنج‌شنبه‌ی هفته (با offset)
+let weekOffset = 0; // 0 = این هفته، 1 = هفته‌ی بعد، -1 = قبل
+function getCurrentWeekRange(offset = 0) {
+    const now = new Date();
+    const dow = now.getDay(); // Sun=0, Mon=1, ..., Sat=6
+    let daysFromSaturday;
+    if (dow === 6) daysFromSaturday = 0;
+    else if (dow === 0) daysFromSaturday = 1;
+    else daysFromSaturday = dow + 1;
+    
+    const saturday = new Date(now);
+    saturday.setDate(now.getDate() - daysFromSaturday + (offset * 7));
+    saturday.setHours(0, 0, 0, 0);
+    
+    const thursday = new Date(saturday);
+    thursday.setDate(saturday.getDate() + 5);
+    thursday.setHours(23, 59, 59, 999);
+    
+    return { saturday, thursday };
+}
+
+// فرمت تاریخ به YYYY-MM-DD
+function formatDateKey(d) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+}
+
+// نام میلادی ماه
+function getEnMonthName(d) {
+    const names = ['January', 'February', 'March', 'April', 'May', 'June', 
+                   'July', 'August', 'September', 'October', 'November', 'December'];
+    return names[d.getMonth()];
+}
+
+// نام میلادی روز
+function getEnDayName(d) {
+    const names = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    return names[d.getDay()];
+}
+
+// رندر کل صفحه‌ی تقویم
+function renderCalendarPage() {
+    renderQuarterlyView();
+    renderMonthlyView();
+    renderWeeklyView();
+    renderSmallTasks();
+    renderCalChat();
+}
+
+// ============ نمای ۳ ماه ============
+function renderQuarterlyView() {
+    const container = document.getElementById('quarterly-content');
+    if (!container) return;
+    
+    const now = new Date();
+    let html = '';
+    
+    for (let i = 0; i < 3; i++) {
+        const monthDate = new Date(now.getFullYear(), now.getMonth() + i, 1);
+        const monthKey = `${monthDate.getFullYear()}-${String(monthDate.getMonth() + 1).padStart(2, '0')}`;
+        const monthName = getEnMonthName(monthDate) + ' ' + monthDate.getFullYear();
+        
+        const hours = db.schedule.monthlyHours[monthKey] || {};
+        const goal = db.schedule.monthlyGoals[monthKey] || 'هدفی تعیین نشده';
+        
+        const totalHours = Object.values(hours).reduce((a, b) => a + b, 0);
+        const maxHours = Math.max(...Object.values(hours), 50);
+        
+        html += `<div style="background:#000; border-radius:12px; padding:12px; margin-bottom:10px; border:1px solid var(--border);">`;
+        html += `<div style="display:flex; justify-content:space-between; margin-bottom:10px;">`;
+        html += `<div style="font-size:0.85rem; font-weight:bold;">${monthName}</div>`;
+        html += `<div style="font-size:0.7rem; color:var(--muted);">${totalHours} ساعت</div>`;
+        html += `</div>`;
+        
+        if (Object.keys(hours).length === 0) {
+            html += `<div style="font-size:0.7rem; color:var(--muted); text-align:center; padding:8px;">برنامه‌ای ثبت نشده</div>`;
+        } else {
+            for (const [activity, h] of Object.entries(hours)) {
+                const percent = (h / maxHours) * 100;
+                const color = activity.toLowerCase().includes('react') ? 'var(--blue)' 
+                            : activity.toLowerCase().includes('syca') ? 'var(--green)' 
+                            : 'var(--muted)';
+                html += `<div style="margin-bottom:6px;">`;
+                html += `<div style="display:flex; justify-content:space-between; font-size:0.7rem; margin-bottom:2px;">`;
+                html += `<span style="color:${color};">${activity}</span>`;
+                html += `<span style="color:var(--muted);">${h} ساعت</span>`;
+                html += `</div>`;
+                html += `<div style="height:10px; background:#222; border-radius:3px; overflow:hidden;">`;
+                html += `<div style="height:100%; width:${percent}%; background:${color};"></div>`;
+                html += `</div></div>`;
+            }
+        }
+        
+        html += `<div style="margin-top:10px; padding:6px 10px; background:var(--blue); color:white; border-radius:8px; font-size:0.7rem;">`;
+        html += `🎯 ${goal}</div>`;
+        html += `</div>`;
+    }
+    
+    container.innerHTML = html;
+}
+
+// ============ نمای ماهانه ============
+function renderMonthlyView() {
+    const container = document.getElementById('monthly-content');
+    if (!container) return;
+    
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    const monthName = getEnMonthName(now) + ' ' + year;
+    
+    // محاسبه هفته‌های ماه (با حواس به اینکه ماه از چه روزی شروع می‌شه)
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    
+    // شنبه = 6 در JavaScript. شروع از شنبه‌ی این هفته یا قبلش
+    let firstSaturday = new Date(firstDay);
+    const startDow = firstDay.getDay();
+    if (startDow !== 6) {
+        // برو به اولین شنبه از این ماه (یا قبلش)
+        const daysToSat = (6 - startDow + 7) % 7;
+        firstSaturday.setDate(firstDay.getDate() + daysToSat);
+    }
+    
+    let html = `<div style="text-align:center; font-size:0.85rem; font-weight:bold; margin-bottom:12px;">${monthName}</div>`;
+    
+    // شروع از روز اول ماه، تا روز آخر ماه، در هفته‌های شنبه-پنج‌شنبه
+    let currentStart = new Date(firstDay);
+    let weekNum = 1;
+    
+    while (currentStart <= lastDay) {
+        // پایان این هفته (پنج‌شنبه یا روز آخر ماه)
+        let weekEnd = new Date(currentStart);
+        const dow = currentStart.getDay();
+        // محاسبه چند روز تا پنج‌شنبه (Thursday = 4)
+        let daysToThu;
+        if (dow === 6) daysToThu = 5;        // شنبه
+        else if (dow === 0) daysToThu = 4;   // یکشنبه
+        else if (dow === 1) daysToThu = 3;   // دوشنبه
+        else if (dow === 2) daysToThu = 2;   // سه‌شنبه
+        else if (dow === 3) daysToThu = 1;   // چهارشنبه
+        else if (dow === 4) daysToThu = 0;   // پنج‌شنبه (همین روز)
+        else daysToThu = 6;                   // جمعه
+        
+        weekEnd.setDate(currentStart.getDate() + daysToThu);
+        if (weekEnd > lastDay) weekEnd = new Date(lastDay);
+        
+        const days = Math.floor((weekEnd - currentStart) / (1000 * 60 * 60 * 24)) + 1;
+        const isShortWeek = days < 6;
+        const isCurrentWeek = now >= currentStart && now <= weekEnd;
+        
+        const weekKey = `${year}-W${String(weekNum).padStart(2, '0')}`;
+        const weekGoal = db.schedule.weeklyGoals[weekKey] || '';
+        
+        const bg = isCurrentWeek ? 'var(--yellow)' : '#000';
+        const border = isCurrentWeek ? '2px solid var(--yellow)' : '1px solid var(--border)';
+        const textColor = isCurrentWeek ? 'black' : 'white';
+        
+        html += `<div style="background:${bg}; border:${border}; border-radius:12px; padding:12px; margin-bottom:10px;">`;
+        html += `<div style="display:flex; justify-content:space-between; margin-bottom:8px;">`;
+        html += `<div style="font-size:0.8rem; font-weight:bold; color:${textColor};">`;
+        html += `هفته ${weekNum}${isCurrentWeek ? ' • این هفته' : ''}</div>`;
+        if (isShortWeek) {
+            html += `<div style="font-size:0.65rem; background:var(--pink); color:white; padding:2px 8px; border-radius:99px;">⚠️ هفته کوتاه</div>`;
+        }
+        html += `</div>`;
+        html += `<div style="font-size:0.7rem; color:${isCurrentWeek ? 'rgba(0,0,0,0.7)' : 'var(--muted)'}; margin-bottom:8px;">`;
+        html += `${currentStart.getDate()} ${getEnMonthName(currentStart).slice(0,3)} - ${weekEnd.getDate()} ${getEnMonthName(weekEnd).slice(0,3)} (${days} روز)</div>`;
+        
+        // محاسبه ساعات این هفته
+        const weekHours = computeWeekHours(currentStart, weekEnd);
+        if (Object.keys(weekHours).length > 0) {
+            const maxH = Math.max(...Object.values(weekHours), 10);
+            for (const [activity, h] of Object.entries(weekHours)) {
+                const percent = (h / maxH) * 100;
+                const color = activity.toLowerCase().includes('react') ? '#3B82F6' 
+                            : activity.toLowerCase().includes('syca') ? '#10B981' 
+                            : '#6B7280';
+                html += `<div style="margin-bottom:4px;">`;
+                html += `<div style="display:flex; justify-content:space-between; font-size:0.65rem; margin-bottom:1px;">`;
+                html += `<span style="color:${color}; font-weight:bold;">${activity}</span>`;
+                html += `<span style="color:${isCurrentWeek ? 'rgba(0,0,0,0.6)' : 'var(--muted)'};">${h} ساعت</span>`;
+                html += `</div>`;
+                html += `<div style="height:8px; background:${isCurrentWeek ? 'rgba(255,255,255,0.4)' : '#222'}; border-radius:2px; overflow:hidden;">`;
+                html += `<div style="height:100%; width:${percent}%; background:${color};"></div>`;
+                html += `</div></div>`;
+            }
+        }
+        
+        if (weekGoal) {
+            html += `<div style="margin-top:8px; padding:6px 10px; background:${isCurrentWeek ? 'white' : 'var(--blue)'}; color:${isCurrentWeek ? 'var(--blue)' : 'white'}; border-radius:8px; font-size:0.65rem;">`;
+            html += `🎯 ${weekGoal}</div>`;
+        }
+        
+        html += `</div>`;
+        
+        // برو به شنبه‌ی بعد
+        currentStart = new Date(weekEnd);
+        currentStart.setDate(weekEnd.getDate() + 2); // پنج‌شنبه + 2 = شنبه
+        weekNum++;
+        if (weekNum > 6) break; // محافظت
+    }
+    
+    container.innerHTML = html;
+}
+
+// محاسبه ساعات هفته از داده‌ی weekly
+function computeWeekHours(start, end) {
+    const hours = {};
+    const durationMap = { short: 0.5, medium: 1.5, long: 3, xlong: 4 };
+    
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        const key = formatDateKey(d);
+        const tasks = db.schedule.weekly[key] || [];
+        for (const t of tasks) {
+            const activity = t.type === 'react' ? 'React' : t.type === 'syca' ? 'Syca' : (t.title || 'سایر');
+            hours[activity] = (hours[activity] || 0) + (durationMap[t.duration] || 1);
+        }
+    }
+    
+    return hours;
+}
+
+// ============ نمای هفتگی ============
+function renderWeeklyView() {
+    const container = document.getElementById('weekly-content');
+    const header = document.getElementById('weekly-header');
+    if (!container) return;
+    
+    const { saturday, thursday } = getCurrentWeekRange(weekOffset);
+    
+    // header با دکمه‌های جابجایی
+    if (header) {
+        let label = '';
+        if (weekOffset === 0) label = 'این هفته';
+        else if (weekOffset === 1) label = 'هفته‌ی بعد';
+        else if (weekOffset === -1) label = 'هفته‌ی قبل';
+        else if (weekOffset > 0) label = `${weekOffset} هفته بعد`;
+        else label = `${Math.abs(weekOffset)} هفته قبل`;
+        
+        header.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                <button onclick="changeWeekOffset(-1)" style="background:#000; border:1px solid var(--border); color:white; padding:6px 10px; border-radius:8px; cursor:pointer; font-size:0.85rem; min-width:44px;">‹</button>
+                <div style="flex:1; text-align:center;">
+                    <div style="font-size:0.75rem; font-weight:bold;">${label}</div>
+                    <div style="font-size:0.65rem; color:var(--muted); margin-top:2px;">${saturday.getDate()} ${getEnMonthName(saturday).slice(0,3)} - ${thursday.getDate()} ${getEnMonthName(thursday).slice(0,3)} ${thursday.getFullYear()}</div>
+                </div>
+                <button onclick="changeWeekOffset(1)" style="background:#000; border:1px solid var(--border); color:white; padding:6px 10px; border-radius:8px; cursor:pointer; font-size:0.85rem; min-width:44px;">›</button>
+            </div>
+            ${weekOffset !== 0 ? `<div style="text-align:center; margin-top:8px;"><button onclick="changeWeekOffset(0, true)" style="background:transparent; color:var(--cyan); border:none; cursor:pointer; font-size:0.7rem; text-decoration:underline;">← برگرد به این هفته</button></div>` : ''}
+        `;
+    }
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    let html = '';
+    
+    // header row
+    html += `<div style="display:grid; grid-template-columns:50px 1fr; gap:4px; margin-bottom:6px; font-size:0.6rem; color:var(--muted);">`;
+    html += `<div></div>`;
+    html += `<div style="display:grid; grid-template-columns:repeat(4, 1fr); text-align:center;">`;
+    html += `<div>☀️ صبح</div><div>🌤 ظهر</div><div>🌆 عصر</div><div>🌙 شب</div>`;
+    html += `</div></div>`;
+    
+    // 6 days: Saturday to Thursday with swipe support
+    html += `<div id="weekly-grid" style="background:#000; border:1px solid var(--border); border-radius:12px; overflow:hidden; touch-action:pan-y; user-select:none;">`;
+    
+    for (let i = 0; i < 6; i++) {
+        const day = new Date(saturday);
+        day.setDate(saturday.getDate() + i);
+        const dayKey = formatDateKey(day);
+        const isToday = day.getTime() === today.getTime();
+        const isThursday = i === 5;
+        const isSaturday = i === 0;
+        
+        const dayBg = isToday ? 'var(--yellow)' : 'transparent';
+        const dayColor = isToday ? 'black' : 'white';
+        
+        const tasks = db.schedule.weekly[dayKey] || [];
+        const smallTasks = (db.schedule.smallTasks[dayKey] || []).length;
+        
+        html += `<div style="display:grid; grid-template-columns:50px 1fr; gap:4px; padding:8px 6px; background:${dayBg}; min-height:80px; border-bottom:${i < 5 ? '0.5px solid var(--border)' : 'none'};">`;
+        html += `<div style="display:flex; flex-direction:column; justify-content:center; color:${dayColor};">`;
+        html += `<div style="font-size:0.85rem; font-weight:bold;">${day.getDate()}</div>`;
+        html += `<div style="font-size:0.6rem; opacity:0.8;">${getEnDayName(day)}</div>`;
+        if (isToday) html += `<div style="font-size:0.55rem; margin-top:2px;">امروز</div>`;
+        if (smallTasks > 0) {
+            html += `<div style="margin-top:4px; display:inline-flex; align-items:center; gap:3px;">`;
+            html += `<div style="width:12px; height:12px; background:var(--blue); border-radius:3px; display:flex; align-items:center; justify-content:center; font-size:0.55rem; color:white;">•</div>`;
+            html += `<div style="font-size:0.5rem;">${smallTasks} ریز</div>`;
+            html += `</div>`;
+        }
+        html += `</div>`;
+        
+        html += renderDayPeriods(tasks, isSaturday, isThursday, dayKey);
+        
+        html += `</div>`;
+    }
+    
+    html += `</div>`;
+    
+    // Legend
+    html += `<div style="display:flex; gap:8px; justify-content:center; margin-top:10px; flex-wrap:wrap; font-size:0.55rem; color:var(--muted);">`;
+    html += `<div style="display:flex; align-items:center; gap:3px;"><div style="width:8px; height:8px; background:var(--blue); border-radius:2px;"></div>React</div>`;
+    html += `<div style="display:flex; align-items:center; gap:3px;"><div style="width:8px; height:8px; background:var(--green); border-radius:2px;"></div>Syca</div>`;
+    html += `<div style="display:flex; align-items:center; gap:3px;"><div style="width:8px; height:8px; background:#fff; border:1px solid var(--border); border-radius:2px;"></div>کار معمولی</div>`;
+    html += `<div style="font-size:0.5rem;">← swipe →</div>`;
+    html += `</div>`;
+    
+    container.innerHTML = html;
+    
+    // اضافه کردن swipe handler
+    setTimeout(setupSwipeHandler, 50);
+}
+
+// تغییر weekOffset
+function changeWeekOffset(delta, absolute = false) {
+    if (absolute) {
+        weekOffset = delta;
+    } else {
+        weekOffset += delta;
+    }
+    // محدوده‌ی منطقی
+    if (weekOffset > 4) weekOffset = 4;
+    if (weekOffset < -2) weekOffset = -2;
+    renderWeeklyView();
+}
+
+// مدیریت swipe
+let swipeStartX = 0;
+let swipeEndX = 0;
+function setupSwipeHandler() {
+    const grid = document.getElementById('weekly-grid');
+    if (!grid) return;
+    
+    grid.addEventListener('touchstart', (e) => {
+        swipeStartX = e.changedTouches[0].screenX;
+    }, { passive: true });
+    
+    grid.addEventListener('touchend', (e) => {
+        swipeEndX = e.changedTouches[0].screenX;
+        handleSwipe();
+    }, { passive: true });
+}
+
+function handleSwipe() {
+    const threshold = 50; // حداقل فاصله برای swipe
+    const diff = swipeEndX - swipeStartX;
+    
+    if (Math.abs(diff) < threshold) return;
+    
+    // در direction:rtl, swipe چپ = هفته‌ی قبل, swipe راست = هفته‌ی بعد
+    // ولی برای intuitive بودن:
+    // swipe راست (مثبت) = هفته‌ی قبل
+    // swipe چپ (منفی) = هفته‌ی بعد
+    if (diff > 0) {
+        changeWeekOffset(-1);
+    } else {
+        changeWeekOffset(1);
+    }
+}
+
+// محاسبه‌ی grid template برای هر روز بر اساس کارها
+function renderDayPeriods(tasks, isSaturday, isThursday, dayKey) {
+    const periods = ['morning', 'noon', 'afternoon', 'night'];
+    let html = `<div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:4px;">`;
+    
+    for (const period of periods) {
+        const periodTasks = tasks.filter(t => t.period === period);
+        const taskIdx = tasks.findIndex(t => t.period === period);
+        
+        if (periodTasks.length === 0) {
+            if (isSaturday && period === 'morning') {
+                html += `<div style="background:rgba(0,0,0,0.05); border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:0.55rem; color:var(--muted);">آزاد</div>`;
+            } else if (isThursday && period === 'night') {
+                html += `<div onclick="openWeeklyReview()" style="background:var(--yellow); border-radius:4px; padding:4px 6px; display:flex; flex-direction:column; justify-content:center; cursor:pointer;">`;
+                html += `<div style="font-size:0.65rem; color:black; font-weight:bold;">🌙 مرور</div>`;
+                html += `</div>`;
+            } else {
+                // خانه‌ی خالی - قابل کلیک برای اضافه کردن
+                html += `<div onclick="addTaskToSlot('${dayKey}', '${period}')" style="background:transparent; border:1px dashed var(--border); border-radius:4px; min-height:30px; cursor:pointer; opacity:0.3;"></div>`;
+            }
+        } else {
+            const t = periodTasks[0];
+            const color = t.type === 'react' ? 'var(--blue)' : t.type === 'syca' ? 'var(--green)' : '#fff';
+            const textColor = t.type === 'react' || t.type === 'syca' ? 'white' : 'black';
+            const border = t.type === 'react' || t.type === 'syca' ? 'none' : '1px solid var(--border)';
+            
+            html += `<div onclick="editTaskSlot('${dayKey}', ${taskIdx})" style="background:${color}; border:${border}; border-radius:4px; padding:4px 6px; display:flex; flex-direction:column; justify-content:center; cursor:pointer;">`;
+            html += `<div style="font-size:0.65rem; color:${textColor}; font-weight:bold;">${t.title || (t.type === 'react' ? '⚛️ React' : t.type === 'syca' ? '💻 Syca' : '📌 کار')}</div>`;
+            if (t.subtitle) {
+                html += `<div style="font-size:0.5rem; color:${textColor}; opacity:0.8;">${t.subtitle}</div>`;
+            }
+            if (t.duration === 'long' || t.duration === 'xlong') {
+                html += `<div style="font-size:0.45rem; color:${textColor}; opacity:0.7; margin-top:2px;">⏱ طولانی</div>`;
+            }
+            html += `</div>`;
+        }
+    }
+    
+    html += `</div>`;
+    return html;
+}
+
+// اضافه کردن کار به یه خانه‌ی خالی
+function addTaskToSlot(dayKey, period) {
+    const periodFa = { morning: 'صبح', noon: 'ظهر', afternoon: 'عصر', night: 'شب' }[period] || period;
+    const title = prompt(`عنوان کار جدید (${periodFa}):\n\nمی‌تونی emoji هم بذاری مثل: ⚛️ React یا 💻 Syca یا 🏃 ورزش`);
+    if (!title || !title.trim()) return;
+    
+    // تشخیص type از روی title
+    let type = 'normal';
+    const t = title.toLowerCase();
+    if (t.includes('react') || title.includes('⚛️')) type = 'react';
+    else if (t.includes('syca') || title.includes('💻')) type = 'syca';
+    
+    const duration = prompt('مدت زمان:\n1 = کوتاه (نیم ساعت)\n2 = متوسط (یک‌و‌نیم)\n3 = طولانی (سه ساعت)\n4 = خیلی طولانی', '2');
+    const durationMap = { '1': 'short', '2': 'medium', '3': 'long', '4': 'xlong' };
+    const dur = durationMap[duration] || 'medium';
+    
+    if (!db.schedule.weekly[dayKey]) db.schedule.weekly[dayKey] = [];
+    db.schedule.weekly[dayKey].push({
+        period,
+        type,
+        title: title.trim(),
+        duration: dur
+    });
+    
+    updateMonthlyHoursFromSchedule();
+    saveDB();
+    renderWeeklyView();
+    renderMonthlyView();
+}
+
+// ادیت یا حذف کار
+function editTaskSlot(dayKey, idx) {
+    const tasks = db.schedule.weekly[dayKey];
+    if (!tasks || !tasks[idx]) return;
+    const t = tasks[idx];
+    
+    const choice = prompt(
+        `کار فعلی: ${t.title}\n${t.subtitle ? 'توضیح: ' + t.subtitle + '\n' : ''}مدت: ${t.duration}\n\n` +
+        `چی می‌خوای؟\n` +
+        `1 = تغییر عنوان\n` +
+        `2 = تغییر مدت زمان\n` +
+        `3 = حذف کار\n` +
+        `Cancel = هیچی`,
+        '1'
+    );
+    
+    if (!choice) return;
+    
+    if (choice === '1') {
+        const newTitle = prompt('عنوان جدید:', t.title);
+        if (newTitle && newTitle.trim()) {
+            t.title = newTitle.trim();
+            // به‌روزرسانی type
+            const tl = newTitle.toLowerCase();
+            if (tl.includes('react') || newTitle.includes('⚛️')) t.type = 'react';
+            else if (tl.includes('syca') || newTitle.includes('💻')) t.type = 'syca';
+            else t.type = 'normal';
+        }
+    } else if (choice === '2') {
+        const newDur = prompt('مدت زمان:\n1 = کوتاه\n2 = متوسط\n3 = طولانی\n4 = خیلی طولانی', '2');
+        const durationMap = { '1': 'short', '2': 'medium', '3': 'long', '4': 'xlong' };
+        if (durationMap[newDur]) t.duration = durationMap[newDur];
+    } else if (choice === '3') {
+        if (confirm('این کار حذف بشه؟')) {
+            tasks.splice(idx, 1);
+        }
+    }
+    
+    updateMonthlyHoursFromSchedule();
+    saveDB();
+    renderWeeklyView();
+    renderMonthlyView();
+}
+
+// ============ کارهای ریز ============
+function renderSmallTasks() {
+    const container = document.getElementById('small-tasks-content');
+    if (!container) return;
+    
+    const todayKey = formatDateKey(new Date());
+    const tasks = db.schedule.smallTasks[todayKey] || [];
+    
+    if (tasks.length === 0) {
+        container.innerHTML = `<div style="text-align:center; padding:15px; color:var(--muted); font-size:0.75rem;">کاری ثبت نشده</div>`;
+        return;
+    }
+    
+    let html = '';
+    tasks.forEach((t, idx) => {
+        html += `<div style="display:flex; align-items:center; gap:8px; padding:8px; border-bottom:1px solid var(--border);">`;
+        html += `<input type="checkbox" ${t.done ? 'checked' : ''} onclick="toggleSmallTask('${todayKey}', ${idx})" />`;
+        html += `<div style="flex:1; font-size:0.8rem; ${t.done ? 'text-decoration:line-through; color:var(--muted);' : ''}">${t.text}</div>`;
+        html += `<button onclick="deleteSmallTask('${todayKey}', ${idx})" style="background:transparent; color:var(--muted); border:none; cursor:pointer; padding:4px;">🗑</button>`;
+        html += `</div>`;
+    });
+    
+    container.innerHTML = html;
+}
+
+function addSmallTask() {
+    const text = prompt('متن کار ریز رو بنویس:');
+    if (!text || !text.trim()) return;
+    
+    const todayKey = formatDateKey(new Date());
+    if (!db.schedule.smallTasks[todayKey]) db.schedule.smallTasks[todayKey] = [];
+    db.schedule.smallTasks[todayKey].push({
+        id: generateId(),
+        text: text.trim(),
+        done: false,
+        createdAt: new Date().toISOString()
+    });
+    saveDB();
+    renderSmallTasks();
+    renderWeeklyView(); // برای آپدیت تعداد ریز در هفته
+}
+
+function toggleSmallTask(dateKey, idx) {
+    if (!db.schedule.smallTasks[dateKey]) return;
+    const t = db.schedule.smallTasks[dateKey][idx];
+    if (!t) return;
+    t.done = !t.done;
+    if (t.done) playSound('task_done');
+    saveDB();
+    renderSmallTasks();
+}
+
+function deleteSmallTask(dateKey, idx) {
+    if (!confirm('این کار ریز حذف بشه؟')) return;
+    if (!db.schedule.smallTasks[dateKey]) return;
+    db.schedule.smallTasks[dateKey].splice(idx, 1);
+    saveDB();
+    renderSmallTasks();
+    renderWeeklyView();
+}
+
+// ============ چت تقویم ============
+function renderCalChat() {
+    const container = document.getElementById('cal-chat-messages');
+    if (!container) return;
+    
+    const messages = db.schedule.calChat || [];
+    
+    if (messages.length === 0) {
+        container.innerHTML = `<div style="text-align:center; padding:10px; color:var(--muted); font-size:0.7rem;">هنوز پیامی نیست. بنویس یا با میکروفون بگو.</div>`;
+        return;
+    }
+    
+    // آخرین ۵ پیام رو نشون بده
+    const recent = messages.slice(-5);
+    let html = '';
+    recent.forEach(m => {
+        const isUser = m.role === 'user';
+        const bg = isUser ? 'var(--blue)' : '#222';
+        const color = 'white';
+        const align = isUser ? 'flex-end' : 'flex-start';
+        html += `<div style="display:flex; justify-content:${align}; margin-bottom:6px;">`;
+        html += `<div style="background:${bg}; color:${color}; padding:6px 10px; border-radius:10px; max-width:80%; font-size:0.75rem;">${m.content}</div>`;
+        html += `</div>`;
+    });
+    
+    container.innerHTML = html;
+    container.scrollTop = container.scrollHeight;
+}
+
+async function sendCalMessage() {
+    const input = document.getElementById('cal-chat-input');
+    if (!input) return;
+    const text = input.value.trim();
+    if (!text) return;
+    
+    // ذخیره پیام کاربر
+    if (!db.schedule.calChat) db.schedule.calChat = [];
+    db.schedule.calChat.push({
+        role: 'user',
+        content: text,
+        ts: new Date().toISOString()
+    });
+    saveDB();
+    
+    input.value = '';
+    renderCalChat();
+    
+    // اگه AI کار نکنه یا offline باشه، فقط ثبت می‌کنیم
+    if (!isOnline || !db.settings.key) {
+        db.schedule.calChat.push({
+            role: 'ai',
+            content: '📝 ثبت شد. وقتی آنلاین شدی، می‌تونم پیشنهاد بدم.',
+            ts: new Date().toISOString()
+        });
+        saveDB();
+        renderCalChat();
+        return;
+    }
+    
+    // پیام loading
+    db.schedule.calChat.push({
+        role: 'ai',
+        content: '⏳ در حال فکر کردن...',
+        ts: new Date().toISOString(),
+        loading: true
+    });
+    renderCalChat();
+    
+    try {
+        // ساخت context
+        const { saturday, thursday } = getCurrentWeekRange();
+        const weekTasks = [];
+        for (let i = 0; i < 6; i++) {
+            const d = new Date(saturday);
+            d.setDate(saturday.getDate() + i);
+            const key = formatDateKey(d);
+            const tasks = db.schedule.weekly[key] || [];
+            if (tasks.length > 0) {
+                const dayName = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنج‌شنبه'][i];
+                weekTasks.push(`${dayName} (${d.getDate()} ${getEnMonthName(d).slice(0,3)}):`);
+                for (const t of tasks) {
+                    const periodFa = { morning: 'صبح', noon: 'ظهر', afternoon: 'عصر', night: 'شب' }[t.period] || t.period;
+                    weekTasks.push(`  - ${periodFa}: ${t.title || t.type} (${t.duration})`);
+                }
+            }
+        }
+        const scheduleText = weekTasks.length > 0 ? weekTasks.join('\n') : 'برنامه‌ای هنوز نیست.';
+        
+        // پیام‌های قبلی (آخر ۳ تا) برای context
+        const recentMessages = (db.schedule.calChat || [])
+            .filter(m => !m.loading)
+            .slice(-6)
+            .map(m => `${m.role === 'user' ? 'کاربر' : 'تو'}: ${m.content}`)
+            .join('\n');
+        
+        const prompt = `تو سیکا هستی، یه دستیار ADHD-friendly. کاربر در صفحه‌ی تقویم پیامی نوشته. تو باید:
+
+1. درک کنی چی می‌خواد تغییر بده
+2. اگه تغییر مشخصه، یه پیشنهاد دقیق بدی (مثلاً "می‌خوای ورزش رو از سه‌شنبه عصر به چهارشنبه صبح ببرم؟")
+3. صبر کنی تأیید کنه
+
+# برنامه‌ی فعلی این هفته:
+${scheduleText}
+
+# مکالمه‌ی اخیر:
+${recentMessages}
+
+# قوانین:
+- پاسخ کوتاه و دوستانه (حداکثر ۲ جمله)
+- اگه چیزی واضح نیست، بپرس
+- اگه پیشنهاد می‌دی، در پایان بگو "این رو اعمال کنم؟"
+- تغییرات اصلی فقط شب پنج‌شنبه با مرور هفتگی اعمال می‌شه — این رو یادآور بشو
+- فارسی محاوره‌ای، کوتاه
+
+# پاسخ:
+فقط JSON برگردون:
+{
+  "reply": "پاسخت به کاربر",
+  "suggestedAction": null یا { "type": "move", "from": "...", "to": "..." }
+}`;
+        
+        const data = await callGemini(prompt);
+        
+        // حذف پیام loading
+        db.schedule.calChat = db.schedule.calChat.filter(m => !m.loading);
+        
+        const reply = data.reply || 'متوجه نشدم.';
+        db.schedule.calChat.push({
+            role: 'ai',
+            content: reply,
+            ts: new Date().toISOString(),
+            suggestedAction: data.suggestedAction
+        });
+        saveDB();
+        renderCalChat();
+        
+    } catch (e) {
+        console.error('Chat error:', e);
+        // حذف پیام loading
+        db.schedule.calChat = db.schedule.calChat.filter(m => !m.loading);
+        db.schedule.calChat.push({
+            role: 'ai',
+            content: '❌ مشکل در ارتباط با AI. دوباره امتحان کن.',
+            ts: new Date().toISOString()
+        });
+        saveDB();
+        renderCalChat();
+    }
+}
+
+let calVoiceRecording = false;
+let calRecognition = null;
+
+function startCalVoice() {
+    if (calVoiceRecording) {
+        if (calRecognition) calRecognition.stop();
+        return;
+    }
+    
+    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRec) return alert("متأسفانه مرورگرت تشخیص صدا رو پشتیبانی نمی‌کنه.");
+    
+    calRecognition = new SpeechRec();
+    calRecognition.lang = 'fa-IR';
+    calRecognition.interimResults = false;
+    calRecognition.continuous = false;
+    
+    const btn = document.getElementById('cal-voice-btn');
+    
+    calRecognition.onstart = () => {
+        calVoiceRecording = true;
+        if (btn) btn.textContent = '⏹';
+    };
+    
+    calRecognition.onresult = (e) => {
+        const text = e.results[0][0].transcript;
+        const input = document.getElementById('cal-chat-input');
+        if (input) input.value = text;
+    };
+    
+    calRecognition.onend = () => {
+        calVoiceRecording = false;
+        if (btn) btn.textContent = '🎤';
+    };
+    
+    calRecognition.onerror = (e) => {
+        calVoiceRecording = false;
+        if (btn) btn.textContent = '🎤';
+        console.error('Voice error:', e);
+    };
+    
+    calRecognition.start();
+}
+
+// ============ Generate Weekly Schedule با AI واقعی ============
+async function generateWeeklySchedule() {
+    if (!db.settings.key) {
+        return alert("⚠️ ابتدا کلید API Gemini رو در تنظیمات وارد کن.");
+    }
+    
+    if (!isOnline) {
+        return alert("⚠️ برای ساخت برنامه نیاز به اینترنت داری.");
+    }
+    
+    // جمع‌آوری اطلاعات
+    const activeGoals = (db.goals || []).filter(g => !g.archived).slice(0, 5);
+    const pendingTasks = (db.tasks || []).filter(t => !t.done).slice(0, 10);
+    const recentFeedback = (db.schedule.feedback || []).slice(-5);
+    
+    if (activeGoals.length === 0 && pendingTasks.length === 0) {
+        return alert("⚠️ ابتدا چند تا هدف یا کار در صفحه‌ی 'کارها' ثبت کن، بعد دوباره امتحان کن.");
+    }
+    
+    const confirmed = confirm(
+        `🤖 AI یه برنامه‌ی هفته بر اساس این اطلاعات می‌سازه:\n\n` +
+        `• ${activeGoals.length} هدف فعال\n` +
+        `• ${pendingTasks.length} کار انجام نشده\n` +
+        `• ${recentFeedback.length} فیدبک اخیر\n\n` +
+        `چند ثانیه طول می‌کشه. آماده‌ای؟`
+    );
+    if (!confirmed) return;
+    
+    // نمایش loading
+    const btn = event?.target;
+    let originalText = '';
+    if (btn) {
+        originalText = btn.textContent;
+        btn.textContent = '⏳ در حال ساخت...';
+        btn.disabled = true;
+    }
+    
+    try {
+        const { saturday, thursday } = getCurrentWeekRange();
+        
+        // ساخت prompt
+        const goalsText = activeGoals.map(g => 
+            `- ${g.title}${g.deadline ? ' (مهلت: ' + g.deadline + ')' : ''}${g.weeklyHours ? ' (' + g.weeklyHours + ' ساعت/هفته)' : ''}`
+        ).join('\n');
+        
+        const tasksText = pendingTasks.map(t => 
+            `- ${t.title}${t.estimatedHours ? ' (~' + t.estimatedHours + ' ساعت)' : ''}`
+        ).join('\n');
+        
+        const feedbackText = recentFeedback.length > 0 
+            ? recentFeedback.map(f => `- ${f.date}: ${f.text}`).join('\n') 
+            : 'فیدبکی نیست';
+        
+        const prompt = `تو یه دستیار برنامه‌ریزی ADHD-friendly هستی. یه برنامه‌ی هفتگی بساز.
+
+# اطلاعات کاربر:
+
+## اهداف فعال:
+${goalsText || 'هیچ هدفی نیست'}
+
+## کارهای انجام نشده:
+${tasksText || 'کاری نیست'}
+
+## فیدبک‌های اخیر:
+${feedbackText}
+
+# قوانین:
+1. هفته از شنبه (${saturday.toLocaleDateString('en-US')}) تا پنج‌شنبه (${thursday.toLocaleDateString('en-US')}) است.
+2. هر روز ۴ بازه داره: morning (صبح)، noon (ظهر)، afternoon (عصر)، night (شب)
+3. شنبه فقط از ظهر کار شروع می‌شه (صبح آزاد)
+4. پنج‌شنبه شب رزرو مرور هفتگیه
+5. برای هر کار: type = "react" | "syca" | "normal"
+6. برای duration: "short" (نیم ساعت)، "medium" (یک‌و‌نیم)، "long" (سه ساعت)، "xlong" (چهار ساعت)
+7. زمان خالی هم بذار. هر روز ۲-۳ کار کافیه.
+8. کارهای React رو با ⚛️ شروع کن، Syca رو با 💻، کارهای ورزشی با 🏃، خرید با 🛒 و...
+9. به فیدبک‌های اخیر توجه کن. اگه گفتم کاری انجام نشده، شاید سخت بود یا زمان کم بود.
+
+# پاسخ:
+فقط JSON برگردون، هیچ توضیح اضافی نده.
+
+ساختار:
+{
+  "weekGoal": "هدف اصلی این هفته در یک جمله کوتاه",
+  "schedule": [
+    {
+      "dayOffset": 0,
+      "period": "morning",
+      "type": "react",
+      "title": "⚛️ React",
+      "subtitle": "فصل ۳",
+      "duration": "long"
+    }
+  ]
+}
+
+dayOffset: 0=شنبه, 1=یکشنبه, ..., 5=پنج‌شنبه`;
+
+        const data = await callGemini(prompt);
+        
+        if (!data || !data.schedule || !Array.isArray(data.schedule)) {
+            throw new Error("پاسخ AI درست نیست");
+        }
+        
+        // ذخیره برنامه
+        // اول کارهای هفته رو پاک کن
+        for (let i = 0; i < 6; i++) {
+            const d = new Date(saturday);
+            d.setDate(saturday.getDate() + i);
+            const key = formatDateKey(d);
+            db.schedule.weekly[key] = [];
+        }
+        
+        // اضافه کردن کارهای جدید
+        for (const item of data.schedule) {
+            if (typeof item.dayOffset !== 'number' || item.dayOffset < 0 || item.dayOffset > 5) continue;
+            
+            const date = new Date(saturday);
+            date.setDate(saturday.getDate() + item.dayOffset);
+            const key = formatDateKey(date);
+            
+            if (!db.schedule.weekly[key]) db.schedule.weekly[key] = [];
+            db.schedule.weekly[key].push({
+                period: item.period,
+                type: item.type,
+                title: item.title,
+                subtitle: item.subtitle,
+                duration: item.duration
+            });
+        }
+        
+        // ذخیره هدف هفته
+        const year = new Date().getFullYear();
+        const weekNum = Math.ceil(((new Date() - new Date(year, 0, 1)) / 86400000 + new Date(year, 0, 1).getDay() + 1) / 7);
+        const weekKey = `${year}-W${String(weekNum).padStart(2, '0')}`;
+        if (data.weekGoal) {
+            db.schedule.weeklyGoals[weekKey] = data.weekGoal;
+        }
+        
+        // محاسبه ساعات این ماه
+        updateMonthlyHoursFromSchedule();
+        
+        saveDB();
+        renderCalendarPage();
+        
+        // اسکرول به نمای هفته
+        setTimeout(() => {
+            const weeklySection = document.getElementById('cal-weekly');
+            if (weeklySection) {
+                weeklySection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }, 200);
+        
+        alert(`✅ برنامه ساخته شد!\n\n🎯 هدف هفته: ${data.weekGoal || 'مشخص نشده'}\n\nروی نمای هفته اسکرول می‌بینی.`);
+        
+    } catch (e) {
+        console.error('Generate schedule error:', e);
+        alert(`❌ خطا در ساخت برنامه:\n${e.message}\n\nمی‌تونی دوباره امتحان کنی.`);
+    } finally {
+        if (btn) {
+            btn.textContent = originalText || '🤖 ساخت برنامه‌ی جدید با AI';
+            btn.disabled = false;
+        }
+    }
+}
+
+// محاسبه ساعات ماه بر اساس برنامه‌ی موجود
+function updateMonthlyHoursFromSchedule() {
+    const durationMap = { short: 0.5, medium: 1.5, long: 3, xlong: 4 };
+    
+    for (const [dateKey, tasks] of Object.entries(db.schedule.weekly || {})) {
+        const [year, month, day] = dateKey.split('-');
+        const monthKey = `${year}-${month}`;
+        
+        if (!db.schedule.monthlyHours[monthKey]) db.schedule.monthlyHours[monthKey] = {};
+        
+        for (const t of tasks) {
+            const activity = t.type === 'react' ? 'React' 
+                          : t.type === 'syca' ? 'Syca' 
+                          : (t.title || 'سایر').replace(/[⚛️💻🏃🛒📧📞🌙📖]/g, '').trim();
+            
+            if (!db.schedule.monthlyHours[monthKey][activity]) {
+                db.schedule.monthlyHours[monthKey][activity] = 0;
+            }
+            db.schedule.monthlyHours[monthKey][activity] += (durationMap[t.duration] || 1);
+        }
+    }
 }
 
 function switchTab(tab) {
@@ -1852,12 +2897,280 @@ function answerFeedback() {
 // ============ مرور شبانه ============
 function triggerNightlyReview() {
     if (db.lastNightlyReviewDate === todayStr()) return;
+    
+    // چک کن آیا امروز پنج‌شنبه است (آخر هفته در سیکا)
+    const dow = new Date().getDay(); // 0=Sun, ..., 4=Thu, 5=Fri, 6=Sat
+    const isThursdayNight = dow === 4;
+    
+    if (isThursdayNight && db.settings.key && isOnline) {
+        // مرور هفتگی به جای نوتیف معمولی
+        triggerWeeklyReview();
+        return;
+    }
+    
+    // نوتیف معمولی
     if (db.settings.notifEnabled === 'yes' && 'Notification' in window && Notification.permission === 'granted') {
         sendNotif('🌙 سیکا - مرور شبانه', 'وقتشه برای فردا برنامه‌ریزی کنیم.', () => openNightlyReview());
     }
     speak("وقت مرور شبانه است.", "Time for nightly review.");
     playSound('nightly');
     showNightlyBanner();
+}
+
+// ============ مرور هفتگی شب پنج‌شنبه ============
+async function triggerWeeklyReview() {
+    if (db.settings.notifEnabled === 'yes' && 'Notification' in window && Notification.permission === 'granted') {
+        sendNotif('🌅 سیکا - مرور هفتگی', 'وقت مرور این هفته و برنامه‌ریزی هفته‌ی بعد!', () => openWeeklyReview());
+    }
+    speak("وقت مرور هفتگی است.", "Time for weekly review.");
+    playSound('nightly');
+    
+    // نمایش banner
+    showWeeklyReviewBanner();
+}
+
+function showWeeklyReviewBanner() {
+    // اگه banner پنج‌شنبه نباشه، بسازش
+    let banner = document.getElementById('weekly-review-banner');
+    if (!banner) {
+        banner = document.createElement('div');
+        banner.id = 'weekly-review-banner';
+        banner.style.cssText = 'position:fixed; top:60px; left:10px; right:10px; background:linear-gradient(135deg, #f59e0b, #ec4899); color:white; padding:14px; border-radius:12px; z-index:1000; cursor:pointer; box-shadow:0 4px 20px rgba(0,0,0,0.3);';
+        banner.innerHTML = `
+            <div style="font-weight:bold; font-size:0.9rem;">🌅 وقت مرور هفتگی!</div>
+            <div style="font-size:0.75rem; margin-top:4px; opacity:0.95;">بیا با هم این هفته رو بررسی کنیم و هفته‌ی بعد رو بسازیم.</div>
+        `;
+        banner.onclick = () => openWeeklyReview();
+        document.body.appendChild(banner);
+    }
+    banner.style.display = 'block';
+}
+
+function hideWeeklyReviewBanner() {
+    const b = document.getElementById('weekly-review-banner');
+    if (b) b.style.display = 'none';
+}
+
+async function openWeeklyReview() {
+    hideWeeklyReviewBanner();
+    
+    if (!db.settings.key) {
+        return alert("⚠️ برای مرور هفتگی نیاز به کلید API داری.");
+    }
+    
+    if (!isOnline) {
+        return alert("⚠️ مرور هفتگی نیاز به اینترنت داره.");
+    }
+    
+    // نمایش modal مرور هفتگی
+    showWeeklyReviewModal();
+}
+
+function showWeeklyReviewModal() {
+    // اگه modal نیست، بسازش
+    let modal = document.getElementById('weekly-review-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'weekly-review-modal';
+        modal.className = 'modal';
+        modal.innerHTML = `
+            <div class="modal-content" style="max-width:500px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                    <h2 style="font-size:1.1rem; margin:0;">🌅 مرور هفتگی</h2>
+                    <button onclick="closeWeeklyReviewModal()" style="background:transparent; border:none; color:white; font-size:1.5rem; cursor:pointer;">×</button>
+                </div>
+                
+                <div id="weekly-review-content">
+                    <div style="text-align:center; padding:20px;">⏳ در حال آماده‌سازی...</div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+    modal.classList.add('active');
+    
+    // محتوای modal
+    loadWeeklyReviewContent();
+}
+
+function closeWeeklyReviewModal() {
+    const m = document.getElementById('weekly-review-modal');
+    if (m) m.classList.remove('active');
+}
+
+async function loadWeeklyReviewContent() {
+    const container = document.getElementById('weekly-review-content');
+    if (!container) return;
+    
+    const { saturday, thursday } = getCurrentWeekRange();
+    
+    // جمع‌آوری اطلاعات این هفته
+    const weekTasksList = [];
+    for (let i = 0; i < 6; i++) {
+        const d = new Date(saturday);
+        d.setDate(saturday.getDate() + i);
+        const key = formatDateKey(d);
+        const tasks = db.schedule.weekly[key] || [];
+        if (tasks.length > 0) {
+            const dayName = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنج‌شنبه'][i];
+            tasks.forEach(t => weekTasksList.push(`${dayName}: ${t.title || t.type}`));
+        }
+    }
+    
+    const recentFeedback = (db.schedule.feedback || []).slice(-10);
+    const completedSmallTasks = [];
+    for (let i = 0; i < 6; i++) {
+        const d = new Date(saturday);
+        d.setDate(saturday.getDate() + i);
+        const key = formatDateKey(d);
+        const tasks = db.schedule.smallTasks[key] || [];
+        completedSmallTasks.push(...tasks.filter(t => t.done));
+    }
+    
+    container.innerHTML = `
+        <div style="font-size:0.85rem; line-height:1.7;">
+            <div style="background:#000; padding:12px; border-radius:10px; margin-bottom:12px;">
+                <div style="font-weight:bold; margin-bottom:8px; color:var(--yellow);">📊 خلاصه‌ی این هفته:</div>
+                <div style="font-size:0.8rem; color:var(--muted); line-height:1.7;">
+                    • ${weekTasksList.length} کار برنامه‌ریزی شده<br>
+                    • ${completedSmallTasks.length} کار ریز انجام شده<br>
+                    • ${recentFeedback.length} فیدبک ثبت شده
+                </div>
+            </div>
+            
+            <div style="margin-bottom:12px;">
+                <label style="font-size:0.8rem; font-weight:bold; display:block; margin-bottom:6px;">💭 این هفته چطور بود؟</label>
+                <textarea id="weekly-review-feedback" rows="3" placeholder="چه چیزهایی خوب بود؟ چی سخت بود؟ چه احساسی داری؟" 
+                    style="width:100%; padding:10px; border-radius:10px; border:1px solid var(--border); background:#000; color:white; font-size:0.85rem; resize:vertical;"></textarea>
+            </div>
+            
+            <div style="margin-bottom:12px;">
+                <label style="font-size:0.8rem; font-weight:bold; display:block; margin-bottom:6px;">🎯 برای هفته‌ی بعد چی می‌خوای؟</label>
+                <textarea id="weekly-review-next" rows="3" placeholder="مثلاً: ساعت‌های React رو کمتر کن، روی Syca متمرکز شو..." 
+                    style="width:100%; padding:10px; border-radius:10px; border:1px solid var(--border); background:#000; color:white; font-size:0.85rem; resize:vertical;"></textarea>
+            </div>
+            
+            <button onclick="submitWeeklyReview()" style="width:100%; background:linear-gradient(135deg, #f59e0b, #ec4899); color:white; border:none; padding:14px; border-radius:12px; cursor:pointer; font-size:0.9rem; font-weight:bold;">
+                🤖 ساخت برنامه‌ی هفته‌ی بعد با AI
+            </button>
+        </div>
+    `;
+}
+
+async function submitWeeklyReview() {
+    const feedbackEl = document.getElementById('weekly-review-feedback');
+    const nextEl = document.getElementById('weekly-review-next');
+    const feedback = feedbackEl?.value?.trim() || '';
+    const next = nextEl?.value?.trim() || '';
+    
+    if (!feedback && !next) {
+        return alert("حداقل یکی از فیلدها رو پر کن.");
+    }
+    
+    // ذخیره فیدبک
+    if (feedback) {
+        if (!db.schedule.feedback) db.schedule.feedback = [];
+        db.schedule.feedback.push({
+            date: new Date().toISOString().split('T')[0],
+            type: 'weekly_review',
+            text: feedback
+        });
+    }
+    
+    saveDB();
+    
+    const btn = event?.target;
+    if (btn) {
+        btn.textContent = '⏳ در حال ساخت...';
+        btn.disabled = true;
+    }
+    
+    try {
+        // ساخت برنامه‌ی هفته‌ی بعد با Gemini
+        const { saturday: nextSaturday } = getCurrentWeekRange();
+        nextSaturday.setDate(nextSaturday.getDate() + 7); // شنبه‌ی هفته‌ی بعد
+        
+        const activeGoals = (db.goals || []).filter(g => !g.archived).slice(0, 5);
+        const goalsText = activeGoals.map(g => `- ${g.title}`).join('\n');
+        
+        const prompt = `تو یه دستیار ADHD-friendly هستی. کاربر مرور هفتگی کرده. حالا برنامه‌ی هفته‌ی بعد رو بساز.
+
+# فیدبک هفته‌ی گذشته:
+${feedback || 'فیدبکی نیست'}
+
+# درخواست برای هفته‌ی بعد:
+${next || 'درخواست خاصی نداره'}
+
+# اهداف فعال:
+${goalsText || 'هدفی نیست'}
+
+# قوانین:
+- هفته از شنبه تا پنج‌شنبه (۶ روز)
+- ۴ بازه‌ی روزانه: morning, noon, afternoon, night
+- شنبه صبح آزاد (تا ظهر)
+- پنج‌شنبه شب رزرو مرور
+- type: "react" | "syca" | "normal"
+- duration: "short" | "medium" | "long" | "xlong"
+- به فیدبک کاربر توجه کن. اگه گفت چیزی سخت بود، کمتر بذار.
+
+# پاسخ JSON:
+{
+  "weekGoal": "هدف هفته",
+  "schedule": [
+    { "dayOffset": 0, "period": "morning", "type": "react", "title": "⚛️ React", "subtitle": "...", "duration": "long" }
+  ]
+}`;
+        
+        const data = await callGemini(prompt);
+        
+        if (!data || !data.schedule) throw new Error("پاسخ AI درست نیست");
+        
+        // ذخیره برنامه‌ی هفته‌ی بعد
+        for (let i = 0; i < 6; i++) {
+            const d = new Date(nextSaturday);
+            d.setDate(nextSaturday.getDate() + i);
+            const key = formatDateKey(d);
+            db.schedule.weekly[key] = [];
+        }
+        
+        for (const item of data.schedule) {
+            if (typeof item.dayOffset !== 'number') continue;
+            const date = new Date(nextSaturday);
+            date.setDate(nextSaturday.getDate() + item.dayOffset);
+            const key = formatDateKey(date);
+            if (!db.schedule.weekly[key]) db.schedule.weekly[key] = [];
+            db.schedule.weekly[key].push({
+                period: item.period,
+                type: item.type,
+                title: item.title,
+                subtitle: item.subtitle,
+                duration: item.duration
+            });
+        }
+        
+        if (data.weekGoal) {
+            const year = nextSaturday.getFullYear();
+            const weekNum = Math.ceil(((nextSaturday - new Date(year, 0, 1)) / 86400000 + new Date(year, 0, 1).getDay() + 1) / 7);
+            const weekKey = `${year}-W${String(weekNum).padStart(2, '0')}`;
+            db.schedule.weeklyGoals[weekKey] = data.weekGoal;
+        }
+        
+        updateMonthlyHoursFromSchedule();
+        db.lastNightlyReviewDate = todayStr();
+        saveDB();
+        closeWeeklyReviewModal();
+        
+        alert(`✅ برنامه‌ی هفته‌ی بعد آماده شد!\n\n🎯 ${data.weekGoal || ''}\n\nبرو به صفحه‌ی تقویم.`);
+        showPage('calendar');
+        
+    } catch (e) {
+        console.error('Weekly review error:', e);
+        alert(`❌ خطا: ${e.message}`);
+        if (btn) {
+            btn.textContent = '🤖 ساخت برنامه‌ی هفته‌ی بعد با AI';
+            btn.disabled = false;
+        }
+    }
 }
 
 function showNightlyBanner() {
@@ -2457,6 +3770,79 @@ function renderTaskItem(t, opts = {}) {
     `;
 }
 
+// ============ نمایش برنامه‌ی امروز از تقویم در home ============
+function renderTodayFromCalendar() {
+    const card = document.getElementById('today-calendar-card');
+    const content = document.getElementById('today-calendar-content');
+    if (!card || !content) return;
+    
+    const todayDate = new Date();
+    const todayKey = formatDateKey(todayDate);
+    const tasks = (db.schedule?.weekly?.[todayKey]) || [];
+    const smallTasks = (db.schedule?.smallTasks?.[todayKey]) || [];
+    
+    // اگه هیچ چیزی نیست، کارت رو مخفی کن
+    if (tasks.length === 0 && smallTasks.length === 0) {
+        card.style.display = 'none';
+        return;
+    }
+    
+    card.style.display = 'block';
+    
+    // عنوان با تاریخ امروز
+    const dayName = getEnDayName(todayDate);
+    const dayNum = todayDate.getDate();
+    const monthName = getEnMonthName(todayDate);
+    const dateStr = `${dayName}, ${dayNum} ${monthName} ${todayDate.getFullYear()}`;
+    
+    let html = `<div style="font-size:0.7rem; color:var(--cyan); margin-bottom:10px; padding-bottom:8px; border-bottom:1px solid var(--border);">📅 ${dateStr}</div>`;
+    
+    // کارهای اصلی روز
+    if (tasks.length > 0) {
+        const periodOrder = ['morning', 'noon', 'afternoon', 'night'];
+        const periodLabels = { morning: '☀️ صبح', noon: '🌤 ظهر', afternoon: '🌆 عصر', night: '🌙 شب' };
+        
+        // مرتب کردن بر اساس بازه
+        const sortedTasks = [...tasks].sort((a, b) => periodOrder.indexOf(a.period) - periodOrder.indexOf(b.period));
+        
+        sortedTasks.forEach(t => {
+            const color = t.type === 'react' ? 'var(--blue)' : t.type === 'syca' ? 'var(--green)' : 'var(--amber)';
+            const bgColor = t.type === 'react' ? 'rgba(59, 130, 246, 0.15)' 
+                          : t.type === 'syca' ? 'rgba(16, 185, 129, 0.15)' 
+                          : 'rgba(251, 191, 36, 0.1)';
+            
+            html += `<div style="display:flex; gap:10px; align-items:center; padding:10px; background:${bgColor}; border-right:3px solid ${color}; border-radius:6px; margin-bottom:6px;">`;
+            html += `<div style="font-size:0.7rem; color:${color}; min-width:55px; font-weight:bold;">${periodLabels[t.period] || ''}</div>`;
+            html += `<div style="flex:1;">`;
+            html += `<div style="font-size:0.85rem; color:white; font-weight:500;">${t.title || t.type}</div>`;
+            if (t.subtitle) {
+                html += `<div style="font-size:0.7rem; color:#aaa; margin-top:2px;">${t.subtitle}</div>`;
+            }
+            if (t.duration === 'long' || t.duration === 'xlong') {
+                html += `<div style="font-size:0.6rem; color:#888; margin-top:2px;">⏱ کار طولانی</div>`;
+            }
+            html += `</div>`;
+            html += `</div>`;
+        });
+    }
+    
+    // کارهای ریز
+    if (smallTasks.length > 0) {
+        html += `<div style="margin-top:12px; padding-top:10px; border-top:1px solid var(--border);">`;
+        html += `<div style="font-size:0.75rem; color:var(--cyan); margin-bottom:8px; font-weight:bold;">📝 کارهای ریز امروز:</div>`;
+        smallTasks.forEach((t, idx) => {
+            const isDone = t.done;
+            html += `<div style="display:flex; align-items:center; gap:8px; padding:6px 4px; background:${isDone ? 'transparent' : 'rgba(255,255,255,0.03)'}; border-radius:4px; margin-bottom:3px;">`;
+            html += `<input type="checkbox" ${isDone ? 'checked' : ''} onclick="toggleSmallTask('${todayKey}', ${idx}); renderTodayFromCalendar();" style="cursor:pointer;" />`;
+            html += `<div style="flex:1; font-size:0.8rem; ${isDone ? 'text-decoration:line-through; color:#666;' : 'color:white;'}">${t.text}</div>`;
+            html += `</div>`;
+        });
+        html += `</div>`;
+    }
+    
+    content.innerHTML = html;
+}
+
 function render() {
     ['quick', 'deep'].forEach(type => {
         const log = document.getElementById(type + '-chat-log');
@@ -2473,6 +3859,7 @@ function render() {
     showNightlyBanner();
     showCheckinBanner();
     showFeedbackBanner();
+    renderTodayFromCalendar();
     const ctxEl = document.getElementById('today-context-info');
     if (ctxEl && db.todayPlan?.date === todayStr() && db.todayPlan.context?.length > 0) {
         const ctxLabels = { home: '🏠 خونه', outdoor: '🌆 بیرون', online: '💻 آنلاین', phone: '📞 تلفن' };
