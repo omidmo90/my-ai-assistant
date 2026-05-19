@@ -536,7 +536,7 @@
         <div class="card" id="cal-chat">
             <h3 style="font-size:0.9rem; margin-bottom:8px;">💬 با سیکا حرف بزن</h3>
             <div style="font-size:0.7rem; color:var(--muted); margin-bottom:10px; line-height:1.6;">
-                می‌تونی تغییرات رو بگی. تغییرات شب پنج‌شنبه با مشورت اعمال می‌شه.
+                می‌تونی تغییرات رو بگی. تغییرات جمعه شب (ساعت ۸) با مشورت اعمال می‌شه.
             </div>
             <div id="cal-chat-messages" style="max-height:200px; overflow-y:auto; margin-bottom:10px;"></div>
             <div style="display:flex; gap:6px; align-items:center;">
@@ -1423,7 +1423,7 @@ function showPage(p) {
 
 // ============ توابع تقویم ============
 
-// محاسبه‌ی شنبه و پنج‌شنبه‌ی هفته (با offset)
+// محاسبه‌ی شنبه و جمعه‌ی هفته (با offset) - هفته ۷ روز
 let weekOffset = 0; // 0 = این هفته، 1 = هفته‌ی بعد، -1 = قبل
 function getCurrentWeekRange(offset = 0) {
     const now = new Date();
@@ -1437,11 +1437,11 @@ function getCurrentWeekRange(offset = 0) {
     saturday.setDate(now.getDate() - daysFromSaturday + (offset * 7));
     saturday.setHours(0, 0, 0, 0);
     
-    const thursday = new Date(saturday);
-    thursday.setDate(saturday.getDate() + 5);
-    thursday.setHours(23, 59, 59, 999);
+    const friday = new Date(saturday);
+    friday.setDate(saturday.getDate() + 6); // شنبه + 6 = جمعه
+    friday.setHours(23, 59, 59, 999);
     
-    return { saturday, thursday };
+    return { saturday, thursday: friday, friday }; // thursday alias برای backward compat
 }
 
 // فرمت تاریخ به YYYY-MM-DD
@@ -1690,15 +1690,15 @@ function renderWeeklyView() {
     html += `<div>☀️ صبح</div><div>🌤 ظهر</div><div>🌆 عصر</div><div>🌙 شب</div>`;
     html += `</div></div>`;
     
-    // 6 days: Saturday to Thursday with swipe support
+    // 7 days: Saturday to Friday
     html += `<div id="weekly-grid" style="background:#000; border:1px solid var(--border); border-radius:12px; overflow:hidden; touch-action:pan-y; user-select:none;">`;
     
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 7; i++) {
         const day = new Date(saturday);
         day.setDate(saturday.getDate() + i);
         const dayKey = formatDateKey(day);
         const isToday = day.getTime() === today.getTime();
-        const isThursday = i === 5;
+        const isFriday = i === 6;     // جمعه = روز آخر هفته
         const isSaturday = i === 0;
         
         const dayBg = isToday ? 'var(--yellow)' : 'transparent';
@@ -1707,7 +1707,7 @@ function renderWeeklyView() {
         const tasks = db.schedule.weekly[dayKey] || [];
         const smallTasks = (db.schedule.smallTasks[dayKey] || []).length;
         
-        html += `<div style="display:grid; grid-template-columns:50px 1fr; gap:4px; padding:8px 6px; background:${dayBg}; min-height:80px; border-bottom:${i < 5 ? '0.5px solid var(--border)' : 'none'};">`;
+        html += `<div style="display:grid; grid-template-columns:50px 1fr; gap:4px; padding:8px 6px; background:${dayBg}; min-height:80px; border-bottom:${i < 6 ? '0.5px solid var(--border)' : 'none'};">`;
         html += `<div style="display:flex; flex-direction:column; justify-content:center; color:${dayColor};">`;
         html += `<div style="font-size:0.85rem; font-weight:bold;">${day.getDate()}</div>`;
         html += `<div style="font-size:0.6rem; opacity:0.8;">${getEnDayName(day)}</div>`;
@@ -1720,7 +1720,7 @@ function renderWeeklyView() {
         }
         html += `</div>`;
         
-        html += renderDayPeriods(tasks, isSaturday, isThursday, dayKey);
+        html += renderDayPeriods(tasks, isSaturday, isFriday, dayKey);
         
         html += `</div>`;
     }
@@ -1789,7 +1789,7 @@ function handleSwipe() {
 }
 
 // محاسبه‌ی grid template برای هر روز بر اساس کارها
-function renderDayPeriods(tasks, isSaturday, isThursday, dayKey) {
+function renderDayPeriods(tasks, isSaturday, isFriday, dayKey) {
     const periods = ['morning', 'noon', 'afternoon', 'night'];
     let html = `<div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:4px;">`;
     
@@ -1800,9 +1800,11 @@ function renderDayPeriods(tasks, isSaturday, isThursday, dayKey) {
         if (periodTasks.length === 0) {
             if (isSaturday && period === 'morning') {
                 html += `<div style="background:rgba(0,0,0,0.05); border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:0.55rem; color:var(--muted);">آزاد</div>`;
-            } else if (isThursday && period === 'night') {
+            } else if (isFriday && period === 'night') {
+                // جمعه شب = مرور هفتگی ساعت ۲۰
                 html += `<div onclick="openWeeklyReview()" style="background:var(--yellow); border-radius:4px; padding:4px 6px; display:flex; flex-direction:column; justify-content:center; cursor:pointer;">`;
-                html += `<div style="font-size:0.65rem; color:black; font-weight:bold;">🌙 مرور</div>`;
+                html += `<div style="font-size:0.6rem; color:black; font-weight:bold;">🌙 مرور</div>`;
+                html += `<div style="font-size:0.45rem; color:black; opacity:0.7;">۲۰:۰۰</div>`;
                 html += `</div>`;
             } else {
                 // خانه‌ی خالی - قابل کلیک برای اضافه کردن
@@ -2037,13 +2039,13 @@ async function sendCalMessage() {
         // ساخت context
         const { saturday, thursday } = getCurrentWeekRange();
         const weekTasks = [];
-        for (let i = 0; i < 6; i++) {
+        for (let i = 0; i < 7; i++) {
             const d = new Date(saturday);
             d.setDate(saturday.getDate() + i);
             const key = formatDateKey(d);
             const tasks = db.schedule.weekly[key] || [];
             if (tasks.length > 0) {
-                const dayName = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنج‌شنبه'][i];
+                const dayName = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنج‌شنبه', 'جمعه'][i];
                 weekTasks.push(`${dayName} (${d.getDate()} ${getEnMonthName(d).slice(0,3)}):`);
                 for (const t of tasks) {
                     const periodFa = { morning: 'صبح', noon: 'ظهر', afternoon: 'عصر', night: 'شب' }[t.period] || t.period;
@@ -2076,7 +2078,7 @@ ${recentMessages}
 - پاسخ کوتاه و دوستانه (حداکثر ۲ جمله)
 - اگه چیزی واضح نیست، بپرس
 - اگه پیشنهاد می‌دی، در پایان بگو "این رو اعمال کنم؟"
-- تغییرات اصلی فقط شب پنج‌شنبه با مرور هفتگی اعمال می‌شه — این رو یادآور بشو
+- تغییرات اصلی فقط جمعه شب (ساعت ۸) با مرور هفتگی اعمال می‌شه — این رو یادآور بشو
 - فارسی محاوره‌ای، کوتاه
 
 # پاسخ:
@@ -2226,10 +2228,10 @@ ${tasksText || 'کاری نیست'}
 ${feedbackText}
 
 # قوانین:
-1. هفته از شنبه (${saturday.toLocaleDateString('en-US')}) تا پنج‌شنبه (${thursday.toLocaleDateString('en-US')}) است.
+1. هفته از شنبه (${saturday.toLocaleDateString('en-US')}) تا جمعه (${thursday.toLocaleDateString('en-US')}) است (۷ روز).
 2. هر روز ۴ بازه داره: morning (صبح)، noon (ظهر)، afternoon (عصر)، night (شب)
 3. شنبه فقط از ظهر کار شروع می‌شه (صبح آزاد)
-4. پنج‌شنبه شب رزرو مرور هفتگیه
+4. جمعه شب ساعت ۲۰ رزرو مرور هفتگیه (هیچ کار نذار)
 5. برای هر کار: type = "react" | "syca" | "normal"
 6. برای duration: "short" (نیم ساعت)، "medium" (یک‌و‌نیم)، "long" (سه ساعت)، "xlong" (چهار ساعت)
 7. زمان خالی هم بذار. هر روز ۲-۳ کار کافیه.
@@ -2254,7 +2256,7 @@ ${feedbackText}
   ]
 }
 
-dayOffset: 0=شنبه, 1=یکشنبه, ..., 5=پنج‌شنبه`;
+dayOffset: 0=شنبه, 1=یکشنبه, 2=دوشنبه, 3=سه‌شنبه, 4=چهارشنبه, 5=پنج‌شنبه, 6=جمعه`;
 
         const data = await callGemini(prompt);
         
@@ -2263,8 +2265,8 @@ dayOffset: 0=شنبه, 1=یکشنبه, ..., 5=پنج‌شنبه`;
         }
         
         // ذخیره برنامه
-        // اول کارهای هفته رو پاک کن
-        for (let i = 0; i < 6; i++) {
+        // اول کارهای هفته رو پاک کن (۷ روز)
+        for (let i = 0; i < 7; i++) {
             const d = new Date(saturday);
             d.setDate(saturday.getDate() + i);
             const key = formatDateKey(d);
@@ -2273,7 +2275,7 @@ dayOffset: 0=شنبه, 1=یکشنبه, ..., 5=پنج‌شنبه`;
         
         // اضافه کردن کارهای جدید
         for (const item of data.schedule) {
-            if (typeof item.dayOffset !== 'number' || item.dayOffset < 0 || item.dayOffset > 5) continue;
+            if (typeof item.dayOffset !== 'number' || item.dayOffset < 0 || item.dayOffset > 6) continue;
             
             const date = new Date(saturday);
             date.setDate(saturday.getDate() + item.dayOffset);
@@ -3033,11 +3035,11 @@ function answerFeedback() {
 function triggerNightlyReview() {
     if (db.lastNightlyReviewDate === todayStr()) return;
     
-    // چک کن آیا امروز پنج‌شنبه است (آخر هفته در سیکا)
+    // چک کن آیا امروز جمعه است (آخر هفته در سیکا - وقت مرور)
     const dow = new Date().getDay(); // 0=Sun, ..., 4=Thu, 5=Fri, 6=Sat
-    const isThursdayNight = dow === 4;
+    const isFridayNight = dow === 5;
     
-    if (isThursdayNight && db.settings.key && isOnline) {
+    if (isFridayNight && db.settings.key && isOnline) {
         // مرور هفتگی به جای نوتیف معمولی
         triggerWeeklyReview();
         return;
@@ -3052,7 +3054,7 @@ function triggerNightlyReview() {
     showNightlyBanner();
 }
 
-// ============ مرور هفتگی شب پنج‌شنبه ============
+// ============ مرور هفتگی جمعه شب ساعت ۸ ============
 async function triggerWeeklyReview() {
     if (db.settings.notifEnabled === 'yes' && 'Notification' in window && Notification.permission === 'granted') {
         sendNotif('🌅 سیکا - مرور هفتگی', 'وقت مرور این هفته و برنامه‌ریزی هفته‌ی بعد!', () => openWeeklyReview());
@@ -3107,15 +3109,15 @@ function showWeeklyReviewModal() {
     if (!modal) {
         modal = document.createElement('div');
         modal.id = 'weekly-review-modal';
-        modal.className = 'modal';
+        modal.className = 'modal-overlay';
         modal.innerHTML = `
-            <div class="modal-content" style="max-width:500px;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+            <div class="modal" style="max-width:500px; max-height:90vh; display:flex; flex-direction:column; padding:0; overflow:hidden;">
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:15px; border-bottom:1px solid var(--border); flex-shrink:0;">
                     <h2 style="font-size:1.1rem; margin:0;">🌅 مرور هفتگی</h2>
-                    <button onclick="closeWeeklyReviewModal()" style="background:transparent; border:none; color:white; font-size:1.5rem; cursor:pointer;">×</button>
+                    <button onclick="closeWeeklyReviewModal()" style="background:transparent; border:none; color:white; font-size:1.5rem; cursor:pointer; padding:0 8px;">×</button>
                 </div>
                 
-                <div id="weekly-review-content">
+                <div id="weekly-review-content" style="overflow-y:auto; padding:15px; flex:1; min-height:0;">
                     <div style="text-align:center; padding:20px;">⏳ در حال آماده‌سازی...</div>
                 </div>
             </div>
@@ -3141,20 +3143,20 @@ async function loadWeeklyReviewContent() {
     
     // جمع‌آوری اطلاعات این هفته
     const weekTasksList = [];
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 7; i++) {
         const d = new Date(saturday);
         d.setDate(saturday.getDate() + i);
         const key = formatDateKey(d);
         const tasks = db.schedule.weekly[key] || [];
         if (tasks.length > 0) {
-            const dayName = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنج‌شنبه'][i];
+            const dayName = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنج‌شنبه', 'جمعه'][i];
             tasks.forEach(t => weekTasksList.push(`${dayName}: ${t.title || t.type}`));
         }
     }
     
     const recentFeedback = (db.schedule.feedback || []).slice(-10);
     const completedSmallTasks = [];
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 7; i++) {
         const d = new Date(saturday);
         d.setDate(saturday.getDate() + i);
         const key = formatDateKey(d);
@@ -3257,7 +3259,7 @@ function renderNextWeekRoutineDays() {
     const notesEl = document.getElementById('next-week-routine-notes');
     
     if (outdoorContainer) {
-        outdoorContainer.innerHTML = DAY_NAMES_EN.slice(0, 6).map((day, idx) => {
+        outdoorContainer.innerHTML = DAY_NAMES_EN.map((day, idx) => {
             const isSelected = (db.schedule.nextWeekRoutine.outdoorDays || []).includes(day);
             const bgColor = isSelected ? 'var(--amber)' : '#000';
             const borderColor = isSelected ? 'var(--amber)' : 'var(--border)';
@@ -3266,7 +3268,7 @@ function renderNextWeekRoutineDays() {
     }
     
     if (workContainer) {
-        workContainer.innerHTML = DAY_NAMES_EN.slice(0, 6).map((day, idx) => {
+        workContainer.innerHTML = DAY_NAMES_EN.map((day, idx) => {
             const isSelected = (db.schedule.nextWeekRoutine.workDays || []).includes(day);
             const bgColor = isSelected ? 'var(--green)' : '#000';
             const borderColor = isSelected ? 'var(--green)' : 'var(--border)';
@@ -3648,15 +3650,16 @@ ${goalsText || 'هدفی نیست'}
 ${routineText}
 
 # قوانین:
-- هفته از شنبه تا پنج‌شنبه (۶ روز)
+- هفته از شنبه تا جمعه (۷ روز)
 - ۴ بازه‌ی روزانه: morning, noon, afternoon, night
 - شنبه صبح آزاد (تا ظهر)
-- پنج‌شنبه شب رزرو مرور
+- جمعه شب ساعت ۲۰ رزرو مرور (هیچ کار نذار)
 - type: "react" | "syca" | "normal"
 - duration: "short" | "medium" | "long" | "xlong"
 - به فیدبک کاربر توجه کن. اگه گفت چیزی سخت بود، کمتر بذار.
 - روزهایی که کاربر گفته بیرونه (شنبه/...)، صرفاً کارهای بیرون بذار (خرید و...). تو خونه کاری مثل React نذار.
 - روزهای کار/کلاس، فقط ساعت‌های خالی رو پر کن.
+- dayOffset: 0=شنبه, 1=یکشنبه, 2=دوشنبه, 3=سه‌شنبه, 4=چهارشنبه, 5=پنج‌شنبه, 6=جمعه
 
 # پاسخ JSON:
 {
@@ -3670,8 +3673,8 @@ ${routineText}
         
         if (!data || !data.schedule) throw new Error("پاسخ AI درست نیست");
         
-        // ذخیره برنامه‌ی هفته‌ی بعد
-        for (let i = 0; i < 6; i++) {
+        // ذخیره برنامه‌ی هفته‌ی بعد (۷ روز)
+        for (let i = 0; i < 7; i++) {
             const d = new Date(nextSaturday);
             d.setDate(nextSaturday.getDate() + i);
             const key = formatDateKey(d);
@@ -3679,7 +3682,7 @@ ${routineText}
         }
         
         for (const item of data.schedule) {
-            if (typeof item.dayOffset !== 'number') continue;
+            if (typeof item.dayOffset !== 'number' || item.dayOffset < 0 || item.dayOffset > 6) continue;
             const date = new Date(nextSaturday);
             date.setDate(nextSaturday.getDate() + item.dayOffset);
             const key = formatDateKey(date);
@@ -4218,7 +4221,7 @@ async function handleAI(type) {
     // اطلاعات تقویم این هفته (برای پیشنهاد روز)
     const { saturday: weekStart } = getCurrentWeekRange();
     let weekScheduleText = '';
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 7; i++) {
         const d = new Date(weekStart);
         d.setDate(weekStart.getDate() + i);
         const key = formatDateKey(d);
@@ -4284,7 +4287,7 @@ JSON:
   "newPairing": null,
   "readyToBreakdown": false,
   "longTermCandidate": null یا { "title": "...", "description": "...", "estimatedWeeks": عدد },
-  "oneShotTask": null یا { "title": "...", "suggestedDayOffset": 0-5, "suggestedPeriod": "morning|noon|afternoon|night", "context": "home|outdoor|online|phone", "ask": false }
+  "oneShotTask": null یا { "title": "...", "suggestedDayOffset": 0-6, "suggestedPeriod": "morning|noon|afternoon|night", "context": "home|outdoor|online|phone", "ask": false }
 }`;
     try {
         const parsed = await callGemini(systemPrompt);
@@ -4353,7 +4356,7 @@ JSON:
             const offset = task.suggestedDayOffset;
             const period = task.suggestedPeriod || 'noon';
             
-            if (typeof offset === 'number' && offset >= 0 && offset <= 5) {
+            if (typeof offset === 'number' && offset >= 0 && offset <= 6) {
                 setTimeout(() => {
                     const dayName = DAY_NAMES_FA[offset];
                     const periodFa = { morning: 'صبح', noon: 'ظهر', afternoon: 'عصر', night: 'شب' }[period];
