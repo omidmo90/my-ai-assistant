@@ -2258,7 +2258,8 @@ ${feedbackText}
 
 dayOffset: 0=شنبه, 1=یکشنبه, 2=دوشنبه, 3=سه‌شنبه, 4=چهارشنبه, 5=پنج‌شنبه, 6=جمعه`;
 
-        const data = await callGemini(prompt);
+        // 8192 token برای brنامه‌ی هفتگی کامل
+        const data = await callGemini(prompt, 8192);
         
         if (!data || !data.schedule || !Array.isArray(data.schedule)) {
             throw new Error("پاسخ AI درست نیست");
@@ -3610,9 +3611,11 @@ async function submitWeeklyReview() {
     
     saveDB();
     
-    const btn = event?.target;
+    // پیدا کردن دکمه (با چندین روش)
+    const btn = event?.target || document.querySelector('#weekly-review-modal button[onclick*="submitWeeklyReview"]');
+    const originalText = btn?.textContent || '🤖 ساخت برنامه‌ی هفته‌ی بعد با AI';
     if (btn) {
-        btn.textContent = '⏳ در حال ساخت...';
+        btn.textContent = '⏳ در حال ساخت... (۱۰-۳۰ ثانیه)';
         btn.disabled = true;
     }
     
@@ -3669,7 +3672,7 @@ ${routineText}
   ]
 }`;
         
-        const data = await callGemini(prompt);
+        const data = await callGemini(prompt, 8192);
         
         if (!data || !data.schedule) throw new Error("پاسخ AI درست نیست");
         
@@ -3708,14 +3711,20 @@ ${routineText}
         saveDB();
         closeWeeklyReviewModal();
         
-        alert(`✅ برنامه‌ی هفته‌ی بعد آماده شد!\n\n🎯 ${data.weekGoal || ''}\n\nبرو به صفحه‌ی تقویم.`);
+        // تعداد کارهای ساخته شده
+        const taskCount = data.schedule.length;
+        
+        // تنظیم weekOffset به هفته‌ی بعد تا کاربر مستقیم ببینه
+        weekOffset = 1;
+        
+        alert(`✅ برنامه‌ی هفته‌ی بعد آماده شد!\n\n📊 ${taskCount} کار برنامه‌ریزی شد\n🎯 ${data.weekGoal || 'هدف هفته تعیین نشده'}\n\nمی‌برمت به نمای هفته‌ی بعد.`);
         showPage('calendar');
         
     } catch (e) {
         console.error('Weekly review error:', e);
-        alert(`❌ خطا: ${e.message}`);
+        alert(`❌ خطا در ساخت برنامه:\n\n${e.message}\n\nمی‌تونی دوباره امتحان کنی.`);
         if (btn) {
-            btn.textContent = '🤖 ساخت برنامه‌ی هفته‌ی بعد با AI';
+            btn.textContent = originalText;
             btn.disabled = false;
         }
     }
@@ -4135,9 +4144,11 @@ function deletePairing(id) {
 }
 
 // ============ Gemini ============
-async function callGemini(prompt) {
+async function callGemini(prompt, maxTokens = 4096) {
     if (!isOnline) throw new Error("اینترنت قطعه");
     const models = ['gemini-flash-latest', 'gemini-3.1-flash-lite', 'gemini-2.5-flash-lite', 'gemini-2.5-flash'];
+    let lastError = null;
+    
     for (const m of models) {
         try {
             const response = await fetch(
@@ -4147,18 +4158,105 @@ async function callGemini(prompt) {
                     headers: { 'Content-Type': 'application/json', 'x-goog-api-key': db.settings.key },
                     body: JSON.stringify({
                         contents: [{ role: "user", parts: [{ text: prompt }] }],
-                        generationConfig: { temperature: 0.7, maxOutputTokens: 2048, responseMimeType: "application/json" }
+                        generationConfig: { temperature: 0.7, maxOutputTokens: maxTokens, responseMimeType: "application/json" }
                     })
                 }
             );
+            
+            if (!response.ok) {
+                const errText = await response.text().catch(() => '');
+                lastError = `${m}: HTTP ${response.status} - ${errText.slice(0, 200)}`;
+                console.warn(lastError);
+                continue;
+            }
+            
             const data = await response.json();
-            if (!response.ok) continue;
             const raw = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-            if (!raw) continue;
-            return JSON.parse(raw.replace(/```json|```/g, '').trim());
-        } catch (e) { console.error(`${m} failed:`, e); }
+            const finishReason = data?.candidates?.[0]?.finishReason;
+            
+            if (!raw) {
+                lastError = `${m}: پاسخ خالی (finishReason: ${finishReason})`;
+                console.warn(lastError);
+                continue;
+            }
+            
+            // اگه finishReason MAX_TOKENS باشه، JSON ممکنه ناقص باشه
+            if (finishReason === 'MAX_TOKENS') {
+                console.warn(`${m}: token limit hit, JSON may be truncated`);
+            }
+            
+            const cleaned = raw.replace(/```json|```/g, '').trim();
+            
+            try {
+                return JSON.parse(cleaned);
+            } catch (parseErr) {
+                // تلاش برای fix کردن JSON ناقص
+                console.warn(`${m}: JSON parse failed, trying to repair...`);
+                const repaired = tryRepairJSON(cleaned);
+                if (repaired) {
+                    console.log(`${m}: JSON repaired successfully`);
+                    return repaired;
+                }
+                lastError = `${m}: JSON parse failed - ${parseErr.message}`;
+                console.error(lastError, '\nRaw response:', cleaned.slice(0, 500));
+                continue;
+            }
+        } catch (e) {
+            lastError = `${m}: ${e.message}`;
+            console.error(`${m} failed:`, e);
+        }
     }
-    throw new Error("همه مدل‌ها fail شدن");
+    throw new Error(`همه مدل‌ها fail شدن. آخرین خطا: ${lastError}`);
+}
+
+// تلاش برای ترمیم JSON ناقص
+function tryRepairJSON(text) {
+    // اول بدون تغییر امتحان
+    try { return JSON.parse(text); } catch (e) {}
+    
+    // اگه JSON با ] یا } بسته نشده، ببند
+    let repaired = text;
+    
+    // شمارش { و [
+    let openBrace = 0, openBracket = 0;
+    let inString = false;
+    let escaped = false;
+    
+    for (let i = 0; i < repaired.length; i++) {
+        const c = repaired[i];
+        if (escaped) { escaped = false; continue; }
+        if (c === '\\') { escaped = true; continue; }
+        if (c === '"') { inString = !inString; continue; }
+        if (inString) continue;
+        if (c === '{') openBrace++;
+        else if (c === '}') openBrace--;
+        else if (c === '[') openBracket++;
+        else if (c === ']') openBracket--;
+    }
+    
+    // اگه داخل string هستیم، quote رو ببند
+    if (inString) {
+        repaired += '"';
+    }
+    
+    // اگه آخرین character ',' یا یه string ناتمومه، تا قبل از اون ببر
+    repaired = repaired.replace(/,\s*$/, '');
+    
+    // ببند bracket‌ها
+    while (openBracket > 0) {
+        repaired += ']';
+        openBracket--;
+    }
+    while (openBrace > 0) {
+        repaired += '}';
+        openBrace--;
+    }
+    
+    try {
+        return JSON.parse(repaired);
+    } catch (e) {
+        return null;
+    }
 }
 
 // ============ میکروفون ============
