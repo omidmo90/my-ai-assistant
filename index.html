@@ -561,6 +561,7 @@
     <!-- ============ صفحه تنظیمات ============ -->
     <div id="page-settings" class="page">
         <h1>⚙️ تنظیمات</h1>
+        
         <div class="card">
             <label>🔑 Gemini API Key</label>
             <input type="password" id="api-key-input" placeholder="AIzaSy...">
@@ -731,6 +732,18 @@
                 <div id="db-info" style="font-size:0.65rem; color:var(--muted); margin-top:10px; text-align:center;"></div>
             </div>
 
+            <div class="backup-box" style="margin-top:15px; border-color:var(--cyan);">
+                <label style="color:var(--cyan)">🗜 فشرده‌سازی اطلاعات</label>
+                <div style="font-size:0.7rem; color:var(--muted); margin-bottom:10px; line-height:1.6;">
+                    چت‌ها و فیدبک‌های قدیمی به خلاصه تبدیل می‌شن تا حافظه آزاد بشه. سیکا با خلاصه‌ها همچنان می‌تونه کار کنه.<br>
+                    <span style="color:var(--amber);">⚠️ نیاز به اینترنت + API key داره</span>
+                </div>
+                <button onclick="manualCompaction()" style="width:100%; background:var(--cyan); color:white; border:none; padding:12px; border-radius:12px; cursor:pointer; font-size:0.85rem;">
+                    🗜 فشرده‌سازی اطلاعات
+                </button>
+                <div id="compaction-info" style="font-size:0.65rem; color:var(--muted); margin-top:8px; text-align:center;"></div>
+            </div>
+
             <button onclick="clearAll()" style="color:var(--red); background:none; border:none; width:100%; margin-top:20px; cursor:pointer;">
                 🗑️ پاکسازی کامل داده‌ها
             </button>
@@ -856,7 +869,14 @@ const DEFAULT_DB = {
         key: "", nightTime: "22:00", voiceMode: "auto",
         chatHeight: "380", suggestCount: "5", notifEnabled: "yes",
         checkInterval: "2", checkFromHour: "8", checkToHour: "22", checkMethod: "both",
-        feedbackInterval: "4", feedbackFromHour: "10", feedbackToHour: "21", feedbackMethod: "both"
+        feedbackInterval: "4", feedbackFromHour: "10", feedbackToHour: "21", feedbackMethod: "both",
+        // روتین معمول هفتگی - چه روزهایی بیرون می‌رم، چه روزهایی کار می‌کنم
+        routine: {
+            workDays: [],      // ['sat', 'sun', 'mon', 'tue', 'wed'] - روزهای کاری
+            outdoorDays: [],   // روزهای بیرون رفتن (مثلاً پنج‌شنبه)
+            freeDays: [],      // روزهای آزاد
+            notes: ''          // یادداشت اضافی درباره‌ی روتین
+        }
     },
     lastSummary: "", lastMood: "", lastNightlyReviewDate: null,
     lastCheckinTime: null, lastFeedbackTime: null,
@@ -865,13 +885,22 @@ const DEFAULT_DB = {
     offlineQueue: [],
     // ============ فاز ۱: ساختار schedule ============
     schedule: {
-        weekly: {},          // { 'YYYY-MM-DD': [{ day: 0-6, period: 'morning|noon|afternoon|night', title, type: 'react|syca|normal', duration: 'short|medium|long|xlong', goalId?: string }] }
-        smallTasks: {},      // { 'YYYY-MM-DD': [{ id, text, done }] }
-        monthlyHours: {},    // { 'YYYY-MM': { 'React': 32, 'Syca': 40, 'ورزش': 12 } }
-        monthlyGoals: {},    // { 'YYYY-MM': 'متن هدف ماه' }
-        weeklyGoals: {},     // { 'YYYY-WW': 'متن هدف هفته' }
-        feedback: [],        // [{ date, type: 'positive|negative', text, schedule_id? }]
-        calChat: []          // [{ role, content, ts }] - پیام‌های چت تقویم
+        weekly: {},
+        smallTasks: {},
+        monthlyHours: {},
+        monthlyGoals: {},
+        weeklyGoals: {},
+        feedback: [],
+        calChat: [],
+        longTermCandidates: [],
+        // روتین هفته‌ی پیش رو (تعیین شده در مرور هفتگی)
+        nextWeekRoutine: {
+            outdoorDays: [],  // ['thu', 'sat']
+            workDays: [],
+            notes: ''
+        },
+        // آخرین تاریخ compaction
+        lastCompaction: null
     }
 };
 
@@ -954,6 +983,24 @@ function migrateDB(oldDB) {
         });
         if (!Array.isArray(newDB.schedule.feedback)) newDB.schedule.feedback = [];
         if (!Array.isArray(newDB.schedule.calChat)) newDB.schedule.calChat = [];
+        if (!Array.isArray(newDB.schedule.longTermCandidates)) newDB.schedule.longTermCandidates = [];
+        if (!newDB.schedule.nextWeekRoutine) {
+            newDB.schedule.nextWeekRoutine = { outdoorDays: [], workDays: [], notes: '' };
+        }
+        if (newDB.schedule.lastCompaction === undefined) {
+            newDB.schedule.lastCompaction = null;
+        }
+    }
+    
+    // اطمینان از وجود settings.routine
+    if (!newDB.settings) newDB.settings = {};
+    if (!newDB.settings.routine) {
+        newDB.settings.routine = {
+            workDays: [],
+            outdoorDays: [],
+            freeDays: [],
+            notes: ''
+        };
     }
 
     newDB.dbVersion = CURRENT_DB_VERSION;
@@ -1231,8 +1278,21 @@ function mergeBackup() {
 
 function updateDBInfo() {
     const el = document.getElementById('db-info');
-    if (!el) return;
-    el.innerHTML = `📊 ${db.tasks.length} کار | ${db.goals.length} هدف | ${db.pairings.length} جفت | DB v${db.dbVersion}`;
+    if (el) {
+        el.innerHTML = `📊 ${db.tasks.length} کار | ${db.goals.length} هدف | ${db.pairings.length} جفت | DB v${db.dbVersion}`;
+    }
+    
+    // اطلاعات compaction
+    const compEl = document.getElementById('compaction-info');
+    if (compEl) {
+        const lastComp = db.schedule?.lastCompaction;
+        if (!lastComp) {
+            compEl.innerHTML = '📊 هنوز فشرده‌سازی نشده';
+        } else {
+            const days = Math.floor((Date.now() - new Date(lastComp).getTime()) / (24 * 60 * 60 * 1000));
+            compEl.innerHTML = `📊 آخرین فشرده‌سازی: ${days} روز پیش`;
+        }
+    }
 }
 
 // ============ TTS ============
@@ -2316,6 +2376,81 @@ function loadSettings() {
     updateScheduleInfo();
 }
 
+// ============ روتین معمول ============
+const DAY_NAMES_EN = ['sat', 'sun', 'mon', 'tue', 'wed', 'thu', 'fri'];
+const DAY_NAMES_FA = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنج‌شنبه', 'جمعه'];
+
+function renderRoutineDays() {
+    if (!db.settings.routine) {
+        db.settings.routine = { workDays: [], outdoorDays: [], freeDays: [], notes: '' };
+    }
+    
+    const workContainer = document.getElementById('routine-work-days');
+    const outdoorContainer = document.getElementById('routine-outdoor-days');
+    const notesEl = document.getElementById('routine-notes');
+    
+    if (workContainer) {
+        workContainer.innerHTML = DAY_NAMES_EN.map((day, idx) => {
+            const isSelected = (db.settings.routine.workDays || []).includes(day);
+            const bgColor = isSelected ? 'var(--green)' : '#000';
+            const borderColor = isSelected ? 'var(--green)' : 'var(--border)';
+            return `<button onclick="toggleRoutineDay('work', '${day}')" style="background:${bgColor}; color:white; border:1px solid ${borderColor}; padding:6px 10px; border-radius:8px; cursor:pointer; font-size:0.75rem;">${DAY_NAMES_FA[idx]}</button>`;
+        }).join('');
+    }
+    
+    if (outdoorContainer) {
+        outdoorContainer.innerHTML = DAY_NAMES_EN.map((day, idx) => {
+            const isSelected = (db.settings.routine.outdoorDays || []).includes(day);
+            const bgColor = isSelected ? 'var(--amber)' : '#000';
+            const borderColor = isSelected ? 'var(--amber)' : 'var(--border)';
+            return `<button onclick="toggleRoutineDay('outdoor', '${day}')" style="background:${bgColor}; color:white; border:1px solid ${borderColor}; padding:6px 10px; border-radius:8px; cursor:pointer; font-size:0.75rem;">${DAY_NAMES_FA[idx]}</button>`;
+        }).join('');
+    }
+    
+    if (notesEl) {
+        notesEl.value = db.settings.routine.notes || '';
+    }
+}
+
+function toggleRoutineDay(type, day) {
+    if (!db.settings.routine) {
+        db.settings.routine = { workDays: [], outdoorDays: [], freeDays: [], notes: '' };
+    }
+    
+    const key = type === 'work' ? 'workDays' : 'outdoorDays';
+    if (!db.settings.routine[key]) db.settings.routine[key] = [];
+    
+    const idx = db.settings.routine[key].indexOf(day);
+    if (idx >= 0) {
+        db.settings.routine[key].splice(idx, 1);
+    } else {
+        db.settings.routine[key].push(day);
+    }
+    
+    renderRoutineDays();
+}
+
+function saveRoutine() {
+    const notesEl = document.getElementById('routine-notes');
+    if (notesEl) {
+        db.settings.routine.notes = notesEl.value.trim();
+    }
+    saveDB();
+    alert("✅ روتین ذخیره شد!");
+}
+
+function getRoutineForAI() {
+    const r = db.schedule?.nextWeekRoutine || { outdoorDays: [], workDays: [], notes: '' };
+    const workDaysFa = (r.workDays || []).map(d => DAY_NAMES_FA[DAY_NAMES_EN.indexOf(d)]).filter(Boolean).join(', ');
+    const outdoorDaysFa = (r.outdoorDays || []).map(d => DAY_NAMES_FA[DAY_NAMES_EN.indexOf(d)]).filter(Boolean).join(', ');
+    
+    let text = '';
+    if (workDaysFa) text += `روزهای کار/کلاس این هفته: ${workDaysFa}\n`;
+    if (outdoorDaysFa) text += `روزهای بیرون این هفته: ${outdoorDaysFa}\n`;
+    if (r.notes) text += `یادداشت: ${r.notes}\n`;
+    return text || 'روتین مشخصی برای این هفته تعیین نشده.';
+}
+
 function updateScheduleInfo() {
     const checkInt = document.getElementById('interval-check')?.value || db.settings.checkInterval;
     const checkFrom = document.getElementById('check-from-hour')?.value || db.settings.checkFromHour;
@@ -3027,6 +3162,40 @@ async function loadWeeklyReviewContent() {
         completedSmallTasks.push(...tasks.filter(t => t.done));
     }
     
+    // کاندیداهای هدف بلندمدت (فقط pending)
+    const candidates = (db.schedule.longTermCandidates || []).filter(c => c.status === 'pending');
+    
+    let candidatesHtml = '';
+    if (candidates.length > 0) {
+        candidatesHtml = `
+            <div style="background:linear-gradient(135deg, rgba(245,158,11,0.1), rgba(236,72,153,0.1)); border:1px solid var(--amber); padding:12px; border-radius:10px; margin-bottom:12px;">
+                <div style="font-weight:bold; margin-bottom:10px; color:var(--amber); font-size:0.9rem;">
+                    🎯 اهداف بلندمدتی که این هفته در چت گفتی:
+                </div>
+                <div style="font-size:0.7rem; color:var(--muted); margin-bottom:10px;">
+                    بررسی کن و انتخاب کن کدوم‌ها رو می‌خوای به برنامه‌ی بلندمدت اضافه کنی:
+                </div>
+                <div id="candidates-list">
+        `;
+        
+        candidates.forEach(c => {
+            candidatesHtml += `
+                <div id="cand-${c.id}" style="background:#000; padding:10px; border-radius:8px; margin-bottom:8px; border:1px solid var(--border);">
+                    <div style="font-size:0.85rem; color:white; font-weight:bold; margin-bottom:4px;">${c.title}</div>
+                    ${c.description ? `<div style="font-size:0.7rem; color:var(--muted); margin-bottom:6px;">${c.description}</div>` : ''}
+                    ${c.estimatedWeeks ? `<div style="font-size:0.65rem; color:var(--cyan); margin-bottom:6px;">⏱ تخمین: ${c.estimatedWeeks} هفته</div>` : ''}
+                    <div style="font-size:0.6rem; color:#888; margin-bottom:8px;">📝 از: "${c.sourceText}"</div>
+                    <div style="display:flex; gap:6px;">
+                        <button onclick="acceptCandidate('${c.id}')" style="flex:1; background:var(--green); color:white; border:none; padding:6px 10px; border-radius:6px; cursor:pointer; font-size:0.75rem;">✅ اضافه کن</button>
+                        <button onclick="rejectCandidate('${c.id}')" style="flex:1; background:#444; color:white; border:none; padding:6px 10px; border-radius:6px; cursor:pointer; font-size:0.75rem;">❌ رد</button>
+                    </div>
+                </div>
+            `;
+        });
+        
+        candidatesHtml += `</div></div>`;
+    }
+    
     container.innerHTML = `
         <div style="font-size:0.85rem; line-height:1.7;">
             <div style="background:#000; padding:12px; border-radius:10px; margin-bottom:12px;">
@@ -3034,14 +3203,31 @@ async function loadWeeklyReviewContent() {
                 <div style="font-size:0.8rem; color:var(--muted); line-height:1.7;">
                     • ${weekTasksList.length} کار برنامه‌ریزی شده<br>
                     • ${completedSmallTasks.length} کار ریز انجام شده<br>
-                    • ${recentFeedback.length} فیدبک ثبت شده
+                    • ${recentFeedback.length} فیدبک ثبت شده<br>
+                    • ${candidates.length} هدف بلندمدت کاندید
                 </div>
             </div>
+            
+            ${candidatesHtml}
             
             <div style="margin-bottom:12px;">
                 <label style="font-size:0.8rem; font-weight:bold; display:block; margin-bottom:6px;">💭 این هفته چطور بود؟</label>
                 <textarea id="weekly-review-feedback" rows="3" placeholder="چه چیزهایی خوب بود؟ چی سخت بود؟ چه احساسی داری؟" 
                     style="width:100%; padding:10px; border-radius:10px; border:1px solid var(--border); background:#000; color:white; font-size:0.85rem; resize:vertical;"></textarea>
+            </div>
+            
+            <!-- روتین هفته‌ی بعد -->
+            <div style="margin-bottom:12px; padding:12px; background:rgba(6, 182, 212, 0.1); border:1px solid var(--cyan); border-radius:10px;">
+                <label style="font-size:0.85rem; font-weight:bold; display:block; margin-bottom:8px; color:var(--cyan);">🗓️ هفته‌ی بعد چی داری؟</label>
+                
+                <div style="font-size:0.7rem; color:var(--muted); margin-bottom:8px;">🌆 چه روزایی می‌ری بیرون؟ (خرید، اداره، کلاس...)</div>
+                <div id="next-week-outdoor-days" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px;"></div>
+                
+                <div style="font-size:0.7rem; color:var(--muted); margin-bottom:8px;">💼 چه روزایی سر کار/کلاسی؟</div>
+                <div id="next-week-work-days" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px;"></div>
+                
+                <textarea id="next-week-routine-notes" rows="2" placeholder="چیز دیگه‌ای که سیکا باید بدونه (سفر، مهمونی، تعطیلی...)?" 
+                    style="width:100%; padding:8px; border-radius:8px; border:1px solid var(--border); background:#000; color:white; font-size:0.8rem; resize:vertical;"></textarea>
             </div>
             
             <div style="margin-bottom:12px;">
@@ -3055,17 +3241,352 @@ async function loadWeeklyReviewContent() {
             </button>
         </div>
     `;
+    
+    // پر کردن دکمه‌های روزهای هفته
+    renderNextWeekRoutineDays();
+}
+
+// رندر دکمه‌های روزهای روتین هفته‌ی بعد
+function renderNextWeekRoutineDays() {
+    if (!db.schedule.nextWeekRoutine) {
+        db.schedule.nextWeekRoutine = { outdoorDays: [], workDays: [], notes: '' };
+    }
+    
+    const outdoorContainer = document.getElementById('next-week-outdoor-days');
+    const workContainer = document.getElementById('next-week-work-days');
+    const notesEl = document.getElementById('next-week-routine-notes');
+    
+    if (outdoorContainer) {
+        outdoorContainer.innerHTML = DAY_NAMES_EN.slice(0, 6).map((day, idx) => {
+            const isSelected = (db.schedule.nextWeekRoutine.outdoorDays || []).includes(day);
+            const bgColor = isSelected ? 'var(--amber)' : '#000';
+            const borderColor = isSelected ? 'var(--amber)' : 'var(--border)';
+            return `<button onclick="toggleNextWeekDay('outdoor', '${day}')" style="background:${bgColor}; color:white; border:1px solid ${borderColor}; padding:6px 10px; border-radius:8px; cursor:pointer; font-size:0.75rem; flex:1; min-width:50px;">${DAY_NAMES_FA[idx]}</button>`;
+        }).join('');
+    }
+    
+    if (workContainer) {
+        workContainer.innerHTML = DAY_NAMES_EN.slice(0, 6).map((day, idx) => {
+            const isSelected = (db.schedule.nextWeekRoutine.workDays || []).includes(day);
+            const bgColor = isSelected ? 'var(--green)' : '#000';
+            const borderColor = isSelected ? 'var(--green)' : 'var(--border)';
+            return `<button onclick="toggleNextWeekDay('work', '${day}')" style="background:${bgColor}; color:white; border:1px solid ${borderColor}; padding:6px 10px; border-radius:8px; cursor:pointer; font-size:0.75rem; flex:1; min-width:50px;">${DAY_NAMES_FA[idx]}</button>`;
+        }).join('');
+    }
+    
+    if (notesEl) {
+        notesEl.value = db.schedule.nextWeekRoutine.notes || '';
+    }
+}
+
+function toggleNextWeekDay(type, day) {
+    if (!db.schedule.nextWeekRoutine) {
+        db.schedule.nextWeekRoutine = { outdoorDays: [], workDays: [], notes: '' };
+    }
+    
+    const key = type === 'work' ? 'workDays' : 'outdoorDays';
+    if (!db.schedule.nextWeekRoutine[key]) db.schedule.nextWeekRoutine[key] = [];
+    
+    const idx = db.schedule.nextWeekRoutine[key].indexOf(day);
+    if (idx >= 0) {
+        db.schedule.nextWeekRoutine[key].splice(idx, 1);
+    } else {
+        db.schedule.nextWeekRoutine[key].push(day);
+    }
+    
+    renderNextWeekRoutineDays();
+}
+
+// تأیید کاندیدا - تبدیل به goal
+function acceptCandidate(candId) {
+    const cand = db.schedule.longTermCandidates.find(c => c.id === candId);
+    if (!cand) return;
+    
+    cand.status = 'accepted';
+    
+    // اضافه به goals
+    if (!Array.isArray(db.goals)) db.goals = [];
+    db.goals.push({
+        id: generateId(),
+        title: cand.title,
+        description: cand.description || '',
+        priority: 'medium',
+        deadline: cand.estimatedWeeks ? new Date(Date.now() + cand.estimatedWeeks * 7 * 24 * 60 * 60 * 1000).toISOString() : null,
+        archived: false,
+        createdAt: new Date().toISOString(),
+        source: 'long-term-candidate'
+    });
+    
+    saveDB();
+    // hide the candidate
+    const el = document.getElementById('cand-' + candId);
+    if (el) el.style.display = 'none';
+}
+
+function rejectCandidate(candId) {
+    const cand = db.schedule.longTermCandidates.find(c => c.id === candId);
+    if (!cand) return;
+    cand.status = 'rejected';
+    saveDB();
+    const el = document.getElementById('cand-' + candId);
+    if (el) el.style.display = 'none';
+}
+
+// ============ Compaction - فشرده‌سازی اطلاعات قدیمی ============
+async function runCompaction(force = false) {
+    const now = Date.now();
+    const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
+    const lastCompaction = db.schedule.lastCompaction ? new Date(db.schedule.lastCompaction).getTime() : 0;
+    
+    // اگه force نیست و هنوز ۳۰ روز نشده، نکن
+    if (!force && (now - lastCompaction) < THIRTY_DAYS) {
+        return { skipped: true, reason: 'هنوز زمان compaction نیست' };
+    }
+    
+    if (!isOnline || !db.settings.key) {
+        return { skipped: true, reason: 'نیاز به اینترنت + API key' };
+    }
+    
+    const stats = {
+        chatMessagesCompacted: 0,
+        feedbacksCompacted: 0,
+        candidatesRemoved: 0,
+        oldTasksRemoved: 0,
+        oldScheduleRemoved: 0,
+        summary: ''
+    };
+    
+    try {
+        // ============ 1. فشرده‌سازی چت‌های قدیمی ============
+        const cutoff = new Date(now - 14 * 24 * 60 * 60 * 1000); // 14 روز قبل
+        const cutoffStr = cutoff.toISOString();
+        
+        for (const chatType of ['quick', 'deep']) {
+            if (!Array.isArray(db.chatHistory[chatType])) continue;
+            const messages = db.chatHistory[chatType];
+            
+            // پیام‌های جدیدتر از 14 روز
+            const recent = messages.slice(-30); // آخرین ۳۰ پیام رو نگه دار
+            const old = messages.slice(0, -30); // قدیمی‌ترها
+            
+            if (old.length > 5) {
+                // ساخت خلاصه از پیام‌های قدیمی
+                const oldText = old.map(m => `${m.role}: ${m.text}`).join('\n').slice(0, 4000);
+                
+                const summaryPrompt = `این چت‌های قدیمی یک کاربر ADHD با دستیار سیکا هست. یه خلاصه‌ی کوتاه (۳-۵ جمله) از موضوعات اصلی، الگوها و نکات مهمی که در این مدت گفته شده بنویس. JSON برگردون: {"summary": "..."}`;
+                
+                try {
+                    const result = await callGemini(`${summaryPrompt}\n\n# چت‌ها:\n${oldText}`);
+                    const summary = result.summary || '';
+                    
+                    if (summary) {
+                        // قدیمی‌ها رو پاک کن، یه پیام summary اضافه کن
+                        db.chatHistory[chatType] = [
+                            { role: 'ai', text: `📋 خلاصه‌ی چت‌های قدیم: ${summary}`, msgClass: 'summary', summarized: true },
+                            ...recent
+                        ];
+                        stats.chatMessagesCompacted += old.length;
+                    }
+                } catch (e) {
+                    console.error('Chat compaction error:', e);
+                }
+            }
+        }
+        
+        // ============ 2. فشرده‌سازی فیدبک‌های قدیمی ============
+        if (Array.isArray(db.schedule.feedback) && db.schedule.feedback.length > 20) {
+            const old = db.schedule.feedback.slice(0, -10);
+            const recent = db.schedule.feedback.slice(-10);
+            
+            if (old.length > 5) {
+                const oldText = old.map(f => `- ${f.date} (${f.type || ''}): ${f.text}`).join('\n').slice(0, 3000);
+                
+                try {
+                    const result = await callGemini(
+                        `این فیدبک‌های قدیمی کاربر هست. یه خلاصه‌ی کوتاه از الگوها و نکات اصلی بنویس. JSON: {"summary": "..."}\n\n# فیدبک‌ها:\n${oldText}`
+                    );
+                    const summary = result.summary || '';
+                    
+                    if (summary) {
+                        db.schedule.feedback = [
+                            { date: new Date().toISOString().split('T')[0], type: 'summary', text: `📋 خلاصه: ${summary}` },
+                            ...recent
+                        ];
+                        stats.feedbacksCompacted += old.length;
+                    }
+                } catch (e) {
+                    console.error('Feedback compaction error:', e);
+                }
+            }
+        }
+        
+        // ============ 3. حذف کاندیداهای rejected و قدیمی ============
+        if (Array.isArray(db.schedule.longTermCandidates)) {
+            const before = db.schedule.longTermCandidates.length;
+            db.schedule.longTermCandidates = db.schedule.longTermCandidates.filter(c => {
+                if (c.status === 'rejected') return false;
+                if (c.status === 'accepted') return false; // قبلاً به goals منتقل شده
+                // pending‌ها بیشتر از ۲۰ روز رد شدن
+                const age = now - new Date(c.createdAt).getTime();
+                if (age > 20 * 24 * 60 * 60 * 1000) return false;
+                return true;
+            });
+            stats.candidatesRemoved = before - db.schedule.longTermCandidates.length;
+        }
+        
+        // ============ 4. حذف تسک‌های done قدیمی ============
+        if (Array.isArray(db.tasks)) {
+            const before = db.tasks.length;
+            db.tasks = db.tasks.filter(t => {
+                if (!t.done) return true;
+                if (!t.doneAt) return true;
+                const age = now - new Date(t.doneAt).getTime();
+                return age < 30 * 24 * 60 * 60 * 1000; // کمتر از ۳۰ روز
+            });
+            stats.oldTasksRemoved = before - db.tasks.length;
+        }
+        
+        // ============ 5. حذف schedule‌های قدیمی (هفته‌های گذشته) ============
+        if (db.schedule.weekly) {
+            const before = Object.keys(db.schedule.weekly).length;
+            const fourWeeksAgo = new Date(now - 28 * 24 * 60 * 60 * 1000);
+            for (const key of Object.keys(db.schedule.weekly)) {
+                const date = new Date(key);
+                if (date < fourWeeksAgo) {
+                    delete db.schedule.weekly[key];
+                }
+            }
+            stats.oldScheduleRemoved = before - Object.keys(db.schedule.weekly).length;
+        }
+        
+        // ============ 6. حذف کارهای ریز قدیمی ============
+        if (db.schedule.smallTasks) {
+            const fourWeeksAgo = new Date(now - 28 * 24 * 60 * 60 * 1000);
+            for (const key of Object.keys(db.schedule.smallTasks)) {
+                const date = new Date(key);
+                if (date < fourWeeksAgo) {
+                    delete db.schedule.smallTasks[key];
+                }
+            }
+        }
+        
+        // ============ ذخیره ============
+        db.schedule.lastCompaction = new Date().toISOString();
+        saveDB();
+        
+        stats.summary = `
+✅ ${stats.chatMessagesCompacted} پیام چت فشرده شد
+✅ ${stats.feedbacksCompacted} فیدبک فشرده شد  
+✅ ${stats.candidatesRemoved} کاندید قدیمی حذف شد
+✅ ${stats.oldTasksRemoved} کار قدیمی حذف شد
+✅ ${stats.oldScheduleRemoved} برنامه‌ی قدیمی حذف شد
+        `.trim();
+        
+        return { success: true, stats };
+        
+    } catch (e) {
+        console.error('Compaction error:', e);
+        return { error: e.message };
+    }
+}
+
+// تابع دستی برای compaction
+async function manualCompaction() {
+    if (!confirm("⚠️ این عمل اطلاعات قدیمی رو فشرده می‌کنه. بقیه‌ی اطلاعات دست نخورده می‌مونن.\n\nادامه بدم؟")) return;
+    
+    const btn = event?.target;
+    if (btn) {
+        btn.textContent = '⏳ در حال فشرده‌سازی...';
+        btn.disabled = true;
+    }
+    
+    try {
+        const result = await runCompaction(true);
+        if (result.success) {
+            alert(`✅ Compaction انجام شد!\n\n${result.stats.summary}`);
+        } else if (result.skipped) {
+            alert(`⏭ Compaction انجام نشد: ${result.reason}`);
+        } else if (result.error) {
+            alert(`❌ خطا: ${result.error}`);
+        }
+    } finally {
+        if (btn) {
+            btn.textContent = '🗜 فشرده‌سازی اطلاعات';
+            btn.disabled = false;
+        }
+    }
+}
+
+// چک خودکار compaction (در window.onload)
+function autoCheckCompaction() {
+    if (!db.schedule) return;
+    
+    const now = Date.now();
+    const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
+    const lastCompaction = db.schedule.lastCompaction ? new Date(db.schedule.lastCompaction).getTime() : 0;
+    
+    // اگه هنوز ۳۰ روز نشده، خبر بده
+    if (lastCompaction === 0) {
+        // اولین بار - تاریخ رو بذار تا ۳۰ روز دیگه چک کنیم
+        db.schedule.lastCompaction = new Date().toISOString();
+        saveDB();
+        return;
+    }
+    
+    if ((now - lastCompaction) >= THIRTY_DAYS) {
+        // پیشنهاد به کاربر
+        setTimeout(() => {
+            if (confirm("🗜 ۳۰ روز از آخرین فشرده‌سازی اطلاعات گذشته.\nمی‌خوای الان انجامش بدم؟\n\n(چت‌ها و فیدبک‌های قدیمی به خلاصه تبدیل می‌شن تا فضا آزاد شه)")) {
+                runCompaction(true).then(result => {
+                    if (result.success) {
+                        alert(`✅ تموم شد!\n\n${result.stats.summary}`);
+                    }
+                });
+            } else {
+                // اگه نه گفت، ۷ روز دیگه دوباره بپرس
+                db.schedule.lastCompaction = new Date(now - 23 * 24 * 60 * 60 * 1000).toISOString();
+                saveDB();
+            }
+        }, 3000);
+    }
+}
+
+// تأیید کار یک‌باره - افزودن به تقویم
+function acceptOneShotTask(id, title, dayOffset, period, context) {
+    const { saturday } = getCurrentWeekRange();
+    const date = new Date(saturday);
+    date.setDate(saturday.getDate() + dayOffset);
+    const key = formatDateKey(date);
+    
+    if (!db.schedule.weekly[key]) db.schedule.weekly[key] = [];
+    
+    // تشخیص type بر اساس context
+    let type = 'normal';
+    if (context === 'outdoor') type = 'normal';
+    
+    db.schedule.weekly[key].push({
+        period,
+        type,
+        title: title,
+        duration: 'short',
+        oneShot: true,
+        context: context
+    });
+    
+    saveDB();
+    render();
+    
+    const dayName = DAY_NAMES_FA[dayOffset];
+    const periodFa = { morning: 'صبح', noon: 'ظهر', afternoon: 'عصر', night: 'شب' }[period];
+    alert(`✅ "${title}" در ${dayName} ${periodFa} اضافه شد!`);
 }
 
 async function submitWeeklyReview() {
     const feedbackEl = document.getElementById('weekly-review-feedback');
     const nextEl = document.getElementById('weekly-review-next');
+    const routineNotesEl = document.getElementById('next-week-routine-notes');
     const feedback = feedbackEl?.value?.trim() || '';
     const next = nextEl?.value?.trim() || '';
-    
-    if (!feedback && !next) {
-        return alert("حداقل یکی از فیلدها رو پر کن.");
-    }
     
     // ذخیره فیدبک
     if (feedback) {
@@ -3075,6 +3596,14 @@ async function submitWeeklyReview() {
             type: 'weekly_review',
             text: feedback
         });
+    }
+    
+    // ذخیره روتین هفته‌ی بعد
+    if (routineNotesEl) {
+        if (!db.schedule.nextWeekRoutine) {
+            db.schedule.nextWeekRoutine = { outdoorDays: [], workDays: [], notes: '' };
+        }
+        db.schedule.nextWeekRoutine.notes = routineNotesEl.value.trim();
     }
     
     saveDB();
@@ -3093,6 +3622,17 @@ async function submitWeeklyReview() {
         const activeGoals = (db.goals || []).filter(g => !g.archived).slice(0, 5);
         const goalsText = activeGoals.map(g => `- ${g.title}`).join('\n');
         
+        // روتین هفته‌ی بعد برای AI
+        const routine = db.schedule.nextWeekRoutine || { outdoorDays: [], workDays: [], notes: '' };
+        const outdoorDaysFa = (routine.outdoorDays || []).map(d => DAY_NAMES_FA[DAY_NAMES_EN.indexOf(d)]).filter(Boolean).join(', ');
+        const workDaysFa = (routine.workDays || []).map(d => DAY_NAMES_FA[DAY_NAMES_EN.indexOf(d)]).filter(Boolean).join(', ');
+        
+        let routineText = '';
+        if (outdoorDaysFa) routineText += `روزهای بیرون: ${outdoorDaysFa}\n`;
+        if (workDaysFa) routineText += `روزهای کار/کلاس: ${workDaysFa}\n`;
+        if (routine.notes) routineText += `یادداشت: ${routine.notes}\n`;
+        if (!routineText) routineText = 'روتین خاصی نگفته. عادی فرض کن.';
+        
         const prompt = `تو یه دستیار ADHD-friendly هستی. کاربر مرور هفتگی کرده. حالا برنامه‌ی هفته‌ی بعد رو بساز.
 
 # فیدبک هفته‌ی گذشته:
@@ -3104,6 +3644,9 @@ ${next || 'درخواست خاصی نداره'}
 # اهداف فعال:
 ${goalsText || 'هدفی نیست'}
 
+# روتین هفته‌ی پیش رو (مهم!):
+${routineText}
+
 # قوانین:
 - هفته از شنبه تا پنج‌شنبه (۶ روز)
 - ۴ بازه‌ی روزانه: morning, noon, afternoon, night
@@ -3112,6 +3655,8 @@ ${goalsText || 'هدفی نیست'}
 - type: "react" | "syca" | "normal"
 - duration: "short" | "medium" | "long" | "xlong"
 - به فیدبک کاربر توجه کن. اگه گفت چیزی سخت بود، کمتر بذار.
+- روزهایی که کاربر گفته بیرونه (شنبه/...)، صرفاً کارهای بیرون بذار (خرید و...). تو خونه کاری مثل React نذار.
+- روزهای کار/کلاس، فقط ساعت‌های خالی رو پر کن.
 
 # پاسخ JSON:
 {
@@ -3665,23 +4210,82 @@ async function handleAI(type) {
     const recentMsgs = db.chatHistory[type].slice(-8).map(m => `${m.role}: ${m.text}`).join('\n');
     const activeTasks = db.tasks.filter(t => !t.done).slice(0, 10).map(t => `- ${t.title}`).join('\n') || 'هیچ';
     const knownPairings = db.pairings.slice(0, 10).map(p => `${p.mainActivity}: ${p.companions.join(', ')}`).join('\n') || 'هیچ';
+    const activeGoals = (db.goals || []).filter(g => !g.archived).slice(0, 5).map(g => `- ${g.title}`).join('\n') || 'هیچ';
+    const routineText = getRoutineForAI();
     const goalContext = db.pendingGoalChat ? db.goals.find(g => g.id === db.pendingGoalChat) : null;
     const goalNote = goalContext ? `\n⚠️ در حال گفتگو درباره "${goalContext.title}". اگه آماده‌ای readyToBreakdown: true بزن.` : '';
+    
+    // اطلاعات تقویم این هفته (برای پیشنهاد روز)
+    const { saturday: weekStart } = getCurrentWeekRange();
+    let weekScheduleText = '';
+    for (let i = 0; i < 6; i++) {
+        const d = new Date(weekStart);
+        d.setDate(weekStart.getDate() + i);
+        const key = formatDateKey(d);
+        const tasks = db.schedule?.weekly?.[key] || [];
+        const dayName = DAY_NAMES_FA[i];
+        const isToday = formatDateKey(new Date()) === key;
+        weekScheduleText += `\n${dayName}${isToday ? ' (امروز)' : ''}: ${tasks.length > 0 ? tasks.map(t => t.title || t.type).join(', ') : 'خالی'}`;
+    }
+    
     const systemPrompt = `تو سیکا، مربی شخصی هستی. کاربر ADHD داره.
 
 نوع: ${type === 'quick' ? 'گزارش سریع' : 'مشورت عمیق'}
+
+اهداف فعال:
+${activeGoals}
+
 کارها:
 ${activeTasks}
+
 جفت‌ها:
 ${knownPairings}
+
+روتین معمول هفته:
+${routineText}
+
+برنامه‌ی این هفته:${weekScheduleText}
+
 تاریخچه:
 ${recentMsgs}${goalNote}
 
 پیام: "${userText}"
 
+# قوانین تشخیص:
+
+## ۱. هدف بلندمدت (longTermCandidate):
+اگه کاربر چیزی می‌گه که شبیه هدف بلندمدت ـه (چند هفته/ماه طول می‌کشه)، اون رو به عنوان "longTermCandidate" برگردون.
+مثال: "می‌خوام React یاد بگیرم"، "تا ۳ ماه دیگه پروژه‌ای آماده کنم"
+**نه**: "امروز خسته‌ام"، "ایمیلم رو چک کنم"
+اگه قبلاً در اهداف فعال هست، longTermCandidate نده.
+
+## ۲. کار یک‌باره (oneShotTask):
+اگه کاربر یه کار یک‌باره می‌گه که باید در روز خاصی انجام بشه، اون رو به عنوان "oneShotTask" برگردون.
+مثال: "باید فردا برم خرید"، "می‌خوام جمعه برم اداره"، "دوشنبه باید برم بانک"
+**فقط برای quick chat این تشخیص رو بده**.
+
+برای oneShotTask، **حتماً** روز پیشنهادی بده بر اساس:
+- اگه کاربر تاریخ مشخصی گفت → همون
+- اگه گفت "یه روزی" یا "این هفته" → بر اساس روتین (مثلاً اگه پنج‌شنبه‌ها بیرون می‌ره، اونجا بذار)
+- اگه برای بیرون رفتنه (خرید، اداره) → روزی که در outdoorDays هست
+- اگه برای کار اداری/تلفنی است → روزی که خانه‌ست
+- اگه نمی‌دونی کجا بذاری، ask: true بذار
+
+روز پیشنهادی: 0=شنبه, 1=یکشنبه, 2=دوشنبه, 3=سه‌شنبه, 4=چهارشنبه, 5=پنج‌شنبه (در همین هفته)
+بازه: 'morning' | 'noon' | 'afternoon' | 'night'
+
 JSON:
-{ "reply": "پاسخ گرم", "replyEnglish": "...", "summary": "...", "mood": "...",
-  "newTasks": [...], "newPairing": null, "readyToBreakdown": false }`;
+{
+  "reply": "پاسخ گرم. اگه کار یک‌باره تشخیص دادی، بپرس روز پیشنهادیت رو تأیید می‌کنه یا نه",
+  "replyEnglish": "...",
+  "summary": "...",
+  "mood": "...",
+  "newTasks": [...],
+  "newPairing": null,
+  "readyToBreakdown": false,
+  "longTermCandidate": null یا { "title": "...", "description": "...", "estimatedWeeks": عدد },
+  "oneShotTask": null یا { "title": "...", "suggestedDayOffset": 0-5, "suggestedPeriod": "morning|noon|afternoon|night", "context": "home|outdoor|online|phone", "ask": false }
+}`;
     try {
         const parsed = await callGemini(systemPrompt);
         db.chatHistory[type].pop();
@@ -3716,6 +4320,48 @@ JSON:
             if (!pairing.companions.includes(comp)) {
                 pairing.companions.push(comp);
                 pairing.lastUsed = new Date().toISOString();
+            }
+        }
+        // ============ تشخیص کاندیدای هدف بلندمدت ============
+        if (parsed.longTermCandidate && parsed.longTermCandidate.title) {
+            if (!db.schedule) db.schedule = {};
+            if (!Array.isArray(db.schedule.longTermCandidates)) db.schedule.longTermCandidates = [];
+            
+            const exists = db.schedule.longTermCandidates.some(c => 
+                c.title.toLowerCase() === parsed.longTermCandidate.title.toLowerCase()
+            );
+            
+            if (!exists) {
+                db.schedule.longTermCandidates.push({
+                    id: generateId(),
+                    title: parsed.longTermCandidate.title,
+                    description: parsed.longTermCandidate.description || '',
+                    estimatedWeeks: parsed.longTermCandidate.estimatedWeeks || null,
+                    sourceText: userText.slice(0, 150),
+                    createdAt: new Date().toISOString(),
+                    status: 'pending'
+                });
+                
+                setTimeout(() => {
+                    addMessage(type, 'ai', `🎯 این می‌تونه یه هدف بلندمدت باشه: "${parsed.longTermCandidate.title}"\nشب پنج‌شنبه با هم بررسی می‌کنیم.`, 'goal-candidate');
+                }, 1000);
+            }
+        }
+        // ============ تشخیص کار یک‌باره ============
+        if (parsed.oneShotTask && parsed.oneShotTask.title && !parsed.oneShotTask.ask) {
+            const task = parsed.oneShotTask;
+            const offset = task.suggestedDayOffset;
+            const period = task.suggestedPeriod || 'noon';
+            
+            if (typeof offset === 'number' && offset >= 0 && offset <= 5) {
+                setTimeout(() => {
+                    const dayName = DAY_NAMES_FA[offset];
+                    const periodFa = { morning: 'صبح', noon: 'ظهر', afternoon: 'عصر', night: 'شب' }[period];
+                    
+                    if (confirm(`📋 پیشنهاد سیکا:\n\n"${task.title}"\nرو ${dayName} ${periodFa} بذارم تو برنامه؟`)) {
+                        acceptOneShotTask(null, task.title, offset, period, task.context || 'normal');
+                    }
+                }, 800);
             }
         }
         if (parsed.readyToBreakdown && db.pendingGoalChat) {
@@ -4037,6 +4683,9 @@ window.onload = () => {
     }, 100);
     // پردازش URL action از Calendar
     setTimeout(handleURLAction, 2000);
+    
+    // چک خودکار compaction
+    setTimeout(autoCheckCompaction, 5000);
 };
 
 // ============ پردازش URL Actions از Calendar ============
